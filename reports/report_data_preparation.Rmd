@@ -1,0 +1,427 @@
+---
+title: "Chapter 5 — Empirical Analysis: Data Preparation and Preliminary Diagnostics"
+subtitle: "The Plumbing of Liquidity"
+author: "Jordi Camps Triay"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    latex_engine: pdflatex
+    keep_tex: false
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    fig_caption: true
+    fig_width: 7
+    fig_height: 4
+geometry: margin=2.5cm
+fontsize: 11pt
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage{multirow}
+  - \usepackage{float}
+  - \usepackage{setspace}
+  - \onehalfspacing
+  - \usepackage{fancyhdr}
+  - \pagestyle{fancy}
+  - \fancyhead[L]{\small Chapter 5 — Data Preparation}
+  - \fancyhead[R]{\small Camps Triay}
+  - \fancyfoot[C]{\thepage}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, warning = FALSE, message = FALSE,
+  fig.pos = "H", fig.align = "center",
+  out.width = "95%"
+)
+library(readr); library(dplyr); library(tidyr); library(zoo)
+library(tseries); library(ggplot2); library(scales)
+library(corrplot); library(xtable); library(lubridate)
+
+WD <- normalizePath(file.path(dirname(knitr::current_input(dir = TRUE)), ".."))
+df <- read_csv("data_master.csv", show_col_types = FALSE)
+df$Date <- as.Date(df$Date)
+
+df_extended <- df %>% filter(Date >= as.Date("2003-05-01"))
+df_post     <- df %>% filter(Date >= as.Date("2018-04-02"))
+df_ted      <- df %>% filter(Date >= as.Date("2003-05-01"), Date <= as.Date("2022-01-21"))
+
+ccb <- read_csv("cross_currency_basis.csv",
+                col_names = c("Date","AUD","CHF","EUR","GBP","JPY"),
+                skip = 1, show_col_types = FALSE)
+ccb$Date <- as.Date(ccb$Date)
+ccb <- ccb %>% arrange(Date)
+
+# Plotting theme
+theme_thesis <- function(base_size = 10) {
+  theme_minimal(base_size = base_size) %+replace%
+    theme(
+      plot.title    = element_text(face = "bold", size = 12, margin = margin(b = 4)),
+      plot.subtitle = element_text(color = "grey40", size = 8.5, margin = margin(b = 8)),
+      plot.caption  = element_text(size = 7, color = "grey50", hjust = 0, margin = margin(t = 6)),
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(color = "grey92", linewidth = 0.3),
+      axis.title    = element_text(size = 9, color = "grey30"),
+      axis.text     = element_text(size = 8),
+      legend.position = "bottom", legend.text = element_text(size = 8),
+      plot.margin   = margin(8, 10, 6, 8)
+    )
+}
+COL_NAVY <- "#1B4F72"; COL_RED <- "#922B21"; COL_GREEN <- "#1E8449"
+COL_ORANGE <- "#D4AC0D"; COL_PURPLE <- "#7B1FA2"; COL_GREY <- "grey60"
+rec_bands <- data.frame(start = as.Date(c("2007-12-01","2020-02-01")),
+                         end = as.Date(c("2009-06-01","2020-04-01")))
+stress_bands <- data.frame(
+  start = as.Date(c("2018-12-01","2019-09-16","2020-03-09","2022-09-01")),
+  end   = as.Date(c("2018-12-31","2019-10-15","2020-04-15","2022-12-31")))
+```
+
+\newpage
+
+# Variable Selection and Justification
+
+This section documents the variables used in the empirical analysis, their economic motivation, and the rationale for inclusion or exclusion.
+
+## Funding Inputs
+
+**SOFR--EFFR spread.** The Secured Overnight Financing Rate minus the Effective Federal Funds Rate captures the price differential between secured (repo) and unsecured (federal funds) overnight borrowing. When reserves are abundant and evenly distributed, this spread hovers near zero. When reserves become scarce or unevenly distributed across the banking system, the secured rate can spike above the unsecured rate---as occurred dramatically in September 2019 (Duffie and Krishnamurthy, 2016; Copeland, Martin and Walker, 2010). This variable enters the VAR specification in levels, as it is stationary by construction.
+
+**GC Repo--EFFR spread (proxy).** Before SOFR publication began on April 3, 2018, the Federal Reserve Board has documented that the Overnight Treasury General Collateral Repo Primary Dealer Survey Rate serves as a validated historical proxy for SOFR (Federal Reserve Board, FEDS Notes, July 15, 2019). This overnight Treasury GC repo rate is the transaction-weighted median rate from primary dealer surveys---conceptually identical to SOFR, which is the broader volume-weighted median. Using this proxy extends the SOFR-EFFR spread back to May 2003, covering the Global Financial Crisis. A gap of approximately 22 business days exists in March 2018 between the proxy's last observation (February 28, 2018) and SOFR's first publication (April 2, 2018).
+
+**$\Delta$Reserves.** First differences of Federal Reserve bank reserve balances capture the aggregate quantity of settlement liquidity in the banking system (Adrian and Shin, 2010; Duffie et al., 2023). Weekly data (Wednesday release, H.4.1) is forward-filled to daily frequency.
+
+**$\Delta$TGA.** First differences of the Treasury General Account balance serve as an exogenous fiscal drain or injection of reserves. TGA movements are driven by Treasury cash management---tax receipts, debt issuance---not by financial market conditions. This provides an identification advantage: TGA shocks to reserves are plausibly exogenous to credit market outcomes, analogous to fiscal instruments in the monetary policy transmission literature (Romer and Romer, 2004).
+
+**TED spread (robustness).** The 3-month LIBOR minus 3-month Treasury bill rate is the standard pre-SOFR measure of interbank funding stress (Gorton and Metrick, 2012). Unlike SOFR-EFFR, the TED spread contains credit risk through its LIBOR component, making it a less clean measure of pure funding conditions. It is used in a supplementary specification covering 2003--January 2022 (when LIBOR was discontinued).
+
+## Credit Outputs
+
+**Moody's Baa corporate spread.** The Baa-rated corporate bond yield minus the 10-year Treasury yield measures the credit spread on lower investment-grade bonds that are less commonly used as repo collateral (Friedman and Kuttner, 1993; Gilchrist and Zakrajsek, 2012).
+
+**Moody's Aaa corporate spread.** The Aaa-rated corporate bond yield minus the 10-year Treasury yield measures the credit spread on collateral-grade bonds that are embedded in the repo infrastructure (Dick-Nielsen, Feldhutter and Lando, 2012; Adrian, Boyarchenko and Shachar, 2017). The thesis predicts that Aaa spreads should be more sensitive to funding conditions than Baa spreads through the collateral channel.
+
+**Baa--Aaa quality differential.** The difference isolates the collateral channel from the general credit channel. If funding stress widens Aaa spreads more than Baa spreads (compressing the differential), the collateral mechanism is operative.
+
+## Risk Appetite Extension
+
+**log(HYG/LQD).** The log ratio of the iShares High Yield ETF to the iShares Investment Grade ETF proxies for the relative preference for credit risk within fixed income (Bauer, Bernanke and Milstein, 2023).
+
+**DXY.** The US Dollar Index serves as a barometer of global dollar funding conditions (Shin, 2012; Avdjiev et al., 2019). Dollar strengthening is associated with tightening global funding conditions.
+
+**HYG/SHV ratio and EMB.** Additional measures of risk appetite and emerging market transmission, available from 2007 onwards.
+
+## Variables Excluded
+
+- **SOFR--OBFR**: correlation of 0.996 with SOFR--EFFR. Including both would introduce near-perfect multicollinearity.
+- **BGCR--TGCR**: 97\% of observations are zero---no variation to exploit.
+- **M2**: monthly frequency; interpolation to daily introduces measurement error.
+- **VIX, MOVE**: outcome variables reflecting aggregate market fear, not structural funding inputs. Including them as independent variables conflates cause and effect. MOVE is retained for validation only.
+- **Cross-currency basis**: data coverage limited to May 2024--May 2026 (523 observations). Used for descriptive analysis only; formal inclusion in the VAR requires a longer sample.
+
+\newpage
+
+# Data Construction and Preparation
+
+## Sample Periods
+
+The analysis uses nested samples, which is standard in empirical finance when variables have different start dates:
+
+```{r sample-table, results='asis'}
+sample_tbl <- data.frame(
+  Sample = c("Extended (primary)", "Post-2018 (VAR)", "TED (robustness)",
+             "Cross-currency basis"),
+  Period = c("May 2003 -- Apr 2026", "Apr 2018 -- Apr 2026",
+             "May 2003 -- Jan 2022", "May 2024 -- May 2026"),
+  N = c(nrow(df_extended), nrow(df_post), nrow(df_ted), nrow(ccb)),
+  Funding = c("SOFR-EFFR (w/ proxy)", "SOFR-EFFR (actual)",
+              "TED spread", "Descriptive"),
+  Purpose = c("Granger tests, extended VAR", "Primary VAR, IRFs, FEVD",
+              "Robustness specification", "Descriptive only")
+)
+print(xtable(sample_tbl, caption = "Sample Period Definitions",
+             label = "tab:samples", align = c("l","l","c","r","l","l")),
+      include.rownames = FALSE, booktabs = TRUE,
+      caption.placement = "top", comment = FALSE,
+      sanitize.text.function = function(x) gsub("--", "\\\\textendash{}", x))
+```
+
+The extended sample begins in May 2003, when the TED spread, Baa and Aaa corporate spreads, and the GC Repo proxy for SOFR are jointly available. The post-2018 sample begins on April 2, 2018, when the Federal Reserve Bank of New York began publishing SOFR following the Alternative Reference Rates Committee's selection of SOFR as the preferred alternative to USD LIBOR.
+
+## Data Sources
+
+```{r source-table, results='asis'}
+src <- data.frame(
+  Variable = c("SOFR-EFFR", "GC Repo (proxy)", "TED spread",
+               "Baa spread", "Aaa spread", "Reserves", "TGA",
+               "Fed Assets", "ON RRP", "DXY", "HYG", "LQD",
+               "SHV", "EMB", "MOVE"),
+  Source = c("FRBNY; FRED", "FRBNY Survey", "FRED (TEDRATE)",
+             "FRED (BAA10Y)", "FRED (AAA10Y)", "FRED (WRESBAL)",
+             "FRED (WTREGEN)", "FRED (WALCL)", "FRED (RRPONTSYD)",
+             "FRED (DTWEXBGS)", "Bloomberg", "Bloomberg",
+             "Bloomberg", "Bloomberg", "Bloomberg"),
+  Freq = c("Daily", "Daily", "Daily", "Daily", "Daily",
+           "Weekly", "Weekly", "Weekly", "Daily", "Daily",
+           "Daily", "Daily", "Daily", "Daily", "Daily"),
+  stringsAsFactors = FALSE
+)
+print(xtable(src, caption = "Data Sources", label = "tab:sources",
+             align = c("l","l","l","c")),
+      include.rownames = FALSE, booktabs = TRUE,
+      caption.placement = "top", comment = FALSE)
+```
+
+## Frequency Alignment
+
+Weekly series---Reserve Balances, TGA, Total Fed Assets, and Liquidity Swaps---are released on Wednesdays as part of the Federal Reserve's H.4.1 statistical release. Each Wednesday's value is forward-filled through the following business days until the next release. This treatment follows Adrian, Boyarchenko and Shachar (2017). Forward-filling introduces staleness: the variable does not update daily, so within-week variation is lost. This biases *against* finding significant results at daily frequency---any significance found is therefore a conservative estimate of the true relationship.
+
+## Data Cleaning
+
+Three cleaning steps are applied:
+
+1. **Holiday zeros** (`r sum(!is.na(df$Baa_spread) & df$Baa_spread == 0 & !is.na(df$Aaa_spread) & df$Aaa_spread == 0, na.rm=TRUE)` rows in the raw data): days where both Aaa and Baa spreads are recorded as zero correspond to bond market holidays where FRED does not update prices. These are set to NA to prevent spurious zero-returns from distorting volatility estimates and regression coefficients.
+
+2. **DXY zeros** (31 additional rows): non-trading day entries in the DXY series, set to NA.
+
+3. **Redundant variable removal**: SOFR-OBFR (correlation 0.996 with SOFR-EFFR), BGCR-TGCR (97\% zeros), M2 (monthly frequency).
+
+## SOFR Proxy Validation
+
+```{r sofr-proxy-plot, fig.cap="SOFR-EFFR spread: extended sample using GC Repo proxy before April 2018. The vertical dotted line marks the start of official SOFR publication.", fig.height=3.5}
+ggplot(df_extended %>% filter(!is.na(SOFR_EFFR)),
+       aes(x = Date, y = SOFR_EFFR * 100)) +
+  geom_rect(data = rec_bands[rec_bands$end >= as.Date("2003-01-01"), ],
+            aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf),
+            fill = "grey80", alpha = 0.4, inherit.aes = FALSE) +
+  geom_hline(yintercept = 0, color = COL_GREY, linewidth = 0.3, linetype = "dashed") +
+  geom_vline(xintercept = as.Date("2018-04-02"), color = COL_ORANGE,
+             linewidth = 0.5, linetype = "dotted") +
+  annotate("text", x = as.Date("2018-06-01"), y = 200,
+           label = "SOFR\npublication\nbegins", size = 2.5, color = COL_ORANGE, hjust = 0) +
+  geom_line(color = COL_NAVY, linewidth = 0.25, alpha = 0.85) +
+  labs(x = NULL, y = "Basis points",
+       caption = "Pre-2018: GC Repo Rate minus EFFR. Post-2018: SOFR minus EFFR. Source: FRBNY, FRED.") +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y", expand = c(0.01, 0)) +
+  theme_thesis()
+```
+
+The Federal Reserve Board's FEDS Notes (2019) validates the Overnight Treasury General Collateral Repo Primary Dealer Survey Rate as a historical proxy for SOFR. Figure 1 shows the combined SOFR-EFFR series across the entire sample period. The pre-2018 proxy behaves consistently with the post-2018 actual SOFR-EFFR spread: both are mean-reverting around zero with occasional spikes during stress episodes.
+
+The correlation between the SOFR-EFFR spread and the TED spread in their overlapping period is $r = -0.45$ (N = `r nrow(df %>% filter(!is.na(SOFR_EFFR) & !is.na(TED_spread)))`). The negative sign is expected: when secured funding stress rises (SOFR above EFFR), it typically coincides with falling TED spreads post-2018 as LIBOR mechanics changed. The moderate magnitude confirms that these are related but distinct measures of funding conditions. The TED spread contains interbank credit risk through its LIBOR component, whereas SOFR-EFFR isolates the secured/unsecured funding differential.
+
+**Decision**: The SOFR-EFFR spread (with GC Repo proxy) is used as the primary funding price variable in all specifications. The TED spread is used only in a supplementary robustness specification covering 2003--2022.
+
+\newpage
+
+## Stationarity and Transformations
+
+A variable with a unit root---a persistent trend that does not revert to a mean---will produce spurious regression results if included in levels, because two trending variables will appear correlated even if they are causally unrelated (Granger and Newbold, 1974). Table \ref{tab:adf} presents the Augmented Dickey-Fuller test results.
+
+```{r adf-table, results='asis'}
+adf_vars <- c("SOFR_EFFR", "TED_spread", "Baa_spread", "Aaa_spread", "Baa_Aaa",
+              "DXY", "HYG", "LQD", "SHV", "EMB", "Reserves", "TGA",
+              "Fed_Assets", "ON_RRP", "MOVE")
+
+adf_res <- data.frame(Variable = character(), N = integer(),
+                       ADF_L = numeric(), p_L = numeric(), Dec_L = character(),
+                       ADF_D = numeric(), p_D = numeric(), Dec_D = character(),
+                       stringsAsFactors = FALSE)
+for (v in adf_vars) {
+  if (v == "MOVE") x_src <- df_post
+  else if (v == "SOFR_EFFR") x_src <- df_extended
+  else if (v == "TED_spread") x_src <- df_ted
+  else x_src <- df_extended
+  x <- na.omit(x_src[[v]])
+  if (length(x) < 50) next
+  tryCatch({
+    al <- adf.test(x, alternative = "stationary")
+    dx <- diff(x)
+    ad <- adf.test(dx[!is.na(dx)], alternative = "stationary")
+    adf_res <- rbind(adf_res, data.frame(
+      Variable = v, N = length(x),
+      ADF_L = round(al$statistic, 2), p_L = round(al$p.value, 3),
+      Dec_L = ifelse(al$p.value < 0.05, "Stationary", "Unit root"),
+      ADF_D = round(ad$statistic, 2), p_D = round(ad$p.value, 3),
+      Dec_D = ifelse(ad$p.value < 0.05, "Stationary", "Unit root")))
+  }, error = function(e) {})
+}
+colnames(adf_res) <- c("Variable", "N", "ADF (Level)", "p-val", "Decision",
+                         "ADF (Diff)", "p-val ", "Decision ")
+print(xtable(adf_res, caption = "Augmented Dickey-Fuller Unit Root Tests",
+             label = "tab:adf", digits = c(0,0,0,2,3,0,2,3,0)),
+      include.rownames = FALSE, booktabs = TRUE,
+      caption.placement = "top", comment = FALSE, scalebox = 0.85,
+      sanitize.text.function = function(x) gsub("_", "\\\\_", x))
+```
+
+**Spreads** (SOFR-EFFR, TED) are stationary in levels: they fluctuate around a stable mean and can enter the VAR directly. **Credit spreads** (Baa, Aaa) and the Baa-Aaa differential are non-stationary in levels but stationary in first differences. **Quantities** (Reserves, Fed Assets, ON RRP) and **prices** (DXY, LQD, EMB) trend over time and require first-differencing. For ETF prices, log-returns are used rather than simple differences because log-returns are approximately normally distributed and additive over time.
+
+**Caveat**: The Baa-Aaa differential is borderline non-stationary ($p = 0.097$) despite being constructed from two components that each have unit roots. This can occur when the mean of the differential shifts slowly over time, as happened during the post-GFC period of compressed credit spreads. In the VAR, it enters in first differences to be conservative.
+
+\newpage
+
+## Summary Statistics
+
+```{r summary-table, results='asis'}
+summ_vars <- c("SOFR_EFFR", "TED_spread", "Baa_spread", "Aaa_spread",
+               "Baa_Aaa", "DXY", "HYG", "LQD")
+compute_s <- function(data, vars) {
+  out <- data.frame(Variable=character(), N=integer(), Mean=numeric(),
+                    SD=numeric(), Min=numeric(), Max=numeric(), stringsAsFactors=FALSE)
+  for (v in vars) {
+    x <- na.omit(data[[v]])
+    if (length(x)>0) out <- rbind(out, data.frame(
+      Variable=v, N=length(x), Mean=round(mean(x),3),
+      SD=round(sd(x),3), Min=round(min(x),3), Max=round(max(x),3)))
+  }
+  out
+}
+s <- compute_s(df_post, summ_vars)
+print(xtable(s, caption="Summary Statistics (Post-2018 Sample)",
+             label="tab:summ", digits=c(0,0,0,3,3,3,3)),
+      include.rownames=FALSE, booktabs=TRUE, caption.placement="top",
+      comment=FALSE, scalebox=0.90,
+      sanitize.text.function = function(x) gsub("_", "\\\\_", x))
+```
+
+\newpage
+
+## Correlation Diagnostics
+
+```{r corr-plot, fig.cap="Correlation matrix of key variables in first differences (post-2018 sample). Near-zero correlations between funding inputs and credit spread changes confirm that transmission operates with a lag.", fig.height=5, fig.width=6}
+corr_vars <- c("SOFR_EFFR", "d_Reserves", "d_TGA", "d_ON_RRP",
+               "d_Baa", "d_Aaa", "d_Baa_Aaa")
+corr_data <- df_post %>% select(all_of(corr_vars)) %>% drop_na()
+corr_mat <- cor(corr_data)
+
+heat_cols <- colorRampPalette(c("#B71C1C","#FFCDD2","white","#BBDEFB","#0D47A1"))(200)
+par(mar = c(1, 1, 2, 1))
+corrplot(corr_mat, method = "color", type = "upper",
+         addCoef.col = "black", number.cex = 0.7,
+         tl.col = "black", tl.srt = 45, tl.cex = 0.75,
+         col = heat_cols, title = "")
+```
+
+Two findings are critical:
+
+1. **SOFR-EFFR vs credit spread changes**: the contemporaneous correlations are near zero ($r = 0.005$ for $\Delta$Baa, $r = 0.016$ for $\Delta$Aaa). Funding conditions and credit spreads do not move together on the same day. This does not mean they are unrelated---it means the transmission operates with a lag, which is exactly what Granger causality tests and the VAR are designed to detect. A researcher who examined only contemporaneous correlations would conclude there is no relationship and miss the entire story.
+
+2. **$\Delta$Reserves vs $\Delta$TGA**: $r = -0.35$. This mechanical negative correlation reflects the Fed's balance sheet identity: when the TGA builds up (tax receipts), reserves drain. The moderate magnitude confirms these are related but provide distinct information content for the VAR. The maximum pairwise correlation among VAR funding inputs (SOFR-EFFR, $\Delta$Reserves, $\Delta$TGA) is 0.35---well below conventional multicollinearity thresholds.
+
+```{r corr-table, results='asis'}
+corr_nice <- round(corr_mat, 3)
+colnames(corr_nice) <- rownames(corr_nice) <- c(
+  "SOFR-EFFR", "dReserves", "dTGA", "dON RRP", "dBaa", "dAaa", "d(Baa-Aaa)")
+print(xtable(corr_nice,
+  caption = "Correlation Matrix: First Differences (Post-2018)",
+  label = "tab:corr", digits = 3),
+  booktabs = TRUE, caption.placement = "top", comment = FALSE,
+  scalebox = 0.80)
+```
+
+\newpage
+
+## SOFR-EFFR Distribution and Nonlinearity
+
+```{r sofr-hist, fig.cap="Distribution of SOFR-EFFR spread (post-2018). The spread is concentrated near zero with extreme right-tail events.", fig.height=3}
+se <- na.omit(df_post$SOFR_EFFR)
+ggplot(data.frame(x = se * 100), aes(x = x)) +
+  geom_histogram(bins = 100, fill = COL_NAVY, alpha = 0.8, color = "white", linewidth = 0.2) +
+  geom_vline(xintercept = 0, color = COL_RED, linewidth = 0.5, linetype = "dashed") +
+  labs(x = "SOFR-EFFR (basis points)", y = "Frequency",
+       caption = sprintf("N = %d. Mean = %.2f bp. SD = %.2f bp. Skewness = %.1f.",
+                         length(se), mean(se)*100, sd(se)*100,
+                         mean((se-mean(se))^3)/sd(se)^3)) +
+  scale_x_continuous(breaks = seq(-20, 300, 20)) +
+  coord_cartesian(xlim = c(-20, 50)) +
+  theme_thesis()
+```
+
+The SOFR-EFFR spread is near zero on approximately `r round(sum(abs(se) < 0.005)/length(se)*100)`\% of trading days. A linear Granger test asks whether yesterday's near-zero spread predicts today's credit spread change. With so little variation in the regressor, there is no statistical power to detect a relationship. The informational content is concentrated in discrete stress events---September 2019 (295 bps), March 2020, late 2018---that represent less than 10\% of the sample. This motivates the regime-dependent analysis in Section 5.5.
+
+## Key Time Series
+
+```{r ts-credit, fig.cap="Moody's Baa and Aaa corporate bond spreads over 10-year Treasury. Shaded: NBER recessions.", fig.height=3.5}
+p_data <- df_extended %>% select(Date, Baa_spread, Aaa_spread) %>%
+  pivot_longer(-Date, names_to="S", values_to="V") %>% filter(!is.na(V))
+ggplot(p_data, aes(x=Date, y=V, color=S)) +
+  geom_rect(data=rec_bands, aes(xmin=start,xmax=end,ymin=-Inf,ymax=Inf),
+            fill="grey80", alpha=0.4, inherit.aes=FALSE) +
+  geom_line(linewidth=0.25, alpha=0.85) +
+  scale_color_manual(values=c("Aaa_spread"=COL_NAVY,"Baa_spread"=COL_RED),
+                     labels=c("Moody's Aaa","Moody's Baa")) +
+  labs(x=NULL, y="Spread (pp)", color=NULL,
+       caption="Source: FRED (BAA10Y, AAA10Y).") +
+  scale_x_date(date_breaks="3 years", date_labels="%Y", expand=c(0.01,0)) +
+  theme_thesis()
+```
+
+```{r ts-reserves, fig.cap="Federal Reserve bank reserve balances and Treasury General Account. Weekly, forward-filled to daily.", fig.height=3.5}
+p_data <- df_extended %>% filter(!is.na(Reserves)) %>%
+  mutate(Reserves=Reserves/1e6, TGA=TGA/1e6) %>%
+  select(Date, Reserves, TGA) %>%
+  pivot_longer(-Date, names_to="S", values_to="V") %>% filter(!is.na(V))
+ggplot(p_data, aes(x=Date, y=V, color=S)) +
+  geom_rect(data=rec_bands, aes(xmin=start,xmax=end,ymin=-Inf,ymax=Inf),
+            fill="grey80", alpha=0.4, inherit.aes=FALSE) +
+  geom_line(linewidth=0.35, alpha=0.85) +
+  scale_color_manual(values=c("Reserves"=COL_NAVY,"TGA"=COL_ORANGE)) +
+  labs(x=NULL, y="USD trillions", color=NULL,
+       caption="Source: FRED (WRESBAL, WTREGEN).") +
+  scale_x_date(date_breaks="3 years", date_labels="%Y", expand=c(0.01,0)) +
+  theme_thesis()
+```
+
+```{r ts-vol-ratio, fig.cap="Rolling 60-day volatility ratio: Aaa/Baa spread changes. Values above 1 indicate Aaa spreads are more volatile than Baa---a signature of collateral-channel stress. Red bands: September 2019, March 2020.", fig.height=3.5}
+df_vol <- df_extended %>% select(Date, d_Aaa, d_Baa) %>%
+  filter(!is.na(d_Aaa) & !is.na(d_Baa)) %>%
+  mutate(
+    vol_Aaa = zoo::rollapply(d_Aaa, 60, sd, fill=NA, align="right"),
+    vol_Baa = zoo::rollapply(d_Baa, 60, sd, fill=NA, align="right"),
+    vol_ratio = vol_Aaa / vol_Baa)
+
+ggplot(df_vol %>% filter(!is.na(vol_ratio)), aes(x=Date, y=vol_ratio)) +
+  geom_rect(data=rec_bands[rec_bands$end >= as.Date("2003-01-01"),],
+            aes(xmin=start,xmax=end,ymin=-Inf,ymax=Inf),
+            fill="grey80", alpha=0.4, inherit.aes=FALSE) +
+  geom_hline(yintercept=1, color=COL_GREY, linewidth=0.3, linetype="dashed") +
+  annotate("rect", xmin=as.Date("2019-09-15"), xmax=as.Date("2019-10-15"),
+           ymin=-Inf, ymax=Inf, alpha=0.2, fill="#E57373") +
+  annotate("rect", xmin=as.Date("2020-03-01"), xmax=as.Date("2020-04-15"),
+           ymin=-Inf, ymax=Inf, alpha=0.2, fill="#E57373") +
+  geom_line(color=COL_GREEN, linewidth=0.3, alpha=0.85) +
+  labs(x=NULL, y=expression(sigma[Aaa]/sigma[Baa]),
+       caption="60-day rolling window. Red bands: Sept 2019, March 2020.") +
+  scale_x_date(date_breaks="3 years", date_labels="%Y", expand=c(0.01,0)) +
+  coord_cartesian(ylim=c(0, max(df_vol$vol_ratio, na.rm=TRUE)*1.05)) +
+  theme_thesis()
+```
+
+```{r ts-ccb, fig.cap="3-month JPY/USD cross-currency basis (May 2024 -- May 2026). Negative values indicate a dollar funding premium in swap markets.", fig.height=3}
+ggplot(ccb %>% filter(!is.na(JPY)), aes(x=Date, y=JPY)) +
+  geom_hline(yintercept=0, color=COL_GREY, linewidth=0.3, linetype="dashed") +
+  geom_line(color=COL_RED, linewidth=0.5, alpha=0.85) +
+  labs(x=NULL, y="Basis points",
+       caption="Source: Bloomberg. Negative = dollar funding premium.") +
+  scale_x_date(date_breaks="3 months", date_labels="%b %Y", expand=c(0.01,0)) +
+  theme_thesis()
+```
+
+\newpage
+
+# Summary and Implications for the Analysis
+
+The data preparation documented in this section produces a clean, reproducible panel of `r ncol(df)` variables spanning May 2003 to April 2026. The key findings that shape the subsequent empirical strategy are:
+
+1. **The SOFR proxy extends the analysis to the GFC.** The ON Treasury GC Repo Rate, validated by the Federal Reserve as a historical proxy for SOFR, provides SOFR-EFFR coverage from 2003 onwards. This is a material advantage: the 2007--2009 crisis is the most important stress episode in the theoretical framework, and it would be lost without the proxy.
+
+2. **Contemporaneous correlations are near zero.** Funding conditions and credit spread changes do not co-move on the same day. The transmission operates with a lag---precisely the mechanism that Granger causality tests and VAR impulse responses are designed to capture.
+
+3. **The SOFR-EFFR spread is highly nonlinear.** It is near zero on the vast majority of days and spikes only during discrete stress events. Linear models that average across calm and stress periods will find no relationship. This motivates the regime-dependent estimation in Section 5.5.
+
+4. **Multicollinearity is not a concern.** The maximum pairwise correlation among VAR funding inputs is 0.35 (Reserves-TGA, mechanically related through the Fed balance sheet identity). All three funding variables---SOFR-EFFR (price), $\Delta$Reserves (quantity), and $\Delta$TGA (exogenous fiscal)---contribute distinct information.
+
+5. **The cross-currency basis is available only for descriptive analysis.** With 523 observations (May 2024--May 2026), it cannot enter the VAR but provides suggestive visual evidence of the global dollar funding channel.
+
+These findings establish the foundation for the Granger causality tests (Section 5.3), VAR estimation (Section 5.4), and regime-dependent analysis (Section 5.5) that follow.

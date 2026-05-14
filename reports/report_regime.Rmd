@@ -1,0 +1,328 @@
+---
+title: "Section 5.5 --- Regime-Dependent Analysis"
+subtitle: "The Plumbing of Liquidity: How Funding Conditions Transmit to Credit Spreads"
+author: "Jordi Camps Triay"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    latex_engine: pdflatex
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    keep_tex: false
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{float}
+  - \usepackage{caption}
+  - \usepackage{amsmath}
+  - \usepackage{geometry}
+  - \geometry{margin=1in}
+  - \usepackage{setspace}
+  - \onehalfspacing
+  - \captionsetup[table]{skip=8pt}
+  - \captionsetup[figure]{skip=6pt}
+  - \usepackage{graphicx}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, warning = FALSE, message = FALSE,
+  fig.align = "center", fig.width = 7, fig.height = 4,
+  out.width = "100%"
+)
+library(readr)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+WD <- normalizePath(file.path(dirname(knitr::current_input(dir = TRUE)), ".."))
+knitr::opts_knit$set(root.dir = WD)
+
+gc_regime <- read_csv(file.path(WD, "output", "granger_regime_results.csv"), show_col_types = FALSE)
+```
+
+\newpage
+
+# Introduction
+
+The unconditional VAR analysis (Section 5.4) documented that funding variables explain only 2--3\% of credit spread forecast error variance in the post-2018 sample, rising to 3.8\% when the TED spread replaces SOFR--EFFR. However, the distributional analysis in Section 5.2 showed that the SOFR--EFFR spread is compressed at or near zero on most trading days (skewness = 22.5), with meaningful departures occurring only during episodic funding stress events. This suggests that the funding-to-credit transmission channel may be fundamentally nonlinear: its behaviour during genuine dislocations may differ qualitatively from its behaviour during normal money market operations.
+
+This section tests that hypothesis by splitting the post-2018 sample into stress and calm regimes based on the absolute SOFR--EFFR deviation and examining whether the Granger causality results documented in Section 5.3 are regime-dependent. The results reveal a more nuanced picture than simple ``stress-on / calm-off'': multiple funding channels operate during normal conditions, while only the collateral-quality channel survives during genuine dislocations.
+
+# Regime Classification
+
+## Threshold Definition
+
+We classify each trading day as belonging to the ``stress'' or ``calm'' regime based on whether $|\text{SOFR--EFFR}|$ exceeds a threshold of 5 basis points (0.05 percentage points). This threshold is designed to capture genuine funding market dislocations rather than routine rate fluctuations. Under the Federal Reserve's ample-reserves framework, the SOFR--EFFR spread is anchored within a narrow corridor determined by the interest on reserve balances (IORB) and the overnight reverse repurchase (ON RRP) rate. Small deviations within 5 bp reflect normal day-to-day variation in repo market supply and demand; departures beyond 5 bp signal that collateral scarcity, reserve drainage, or some other structural friction is materially affecting funding prices.
+
+```{r threshold_sensitivity}
+thr_df <- data.frame(
+  Threshold = c("1 bp", "2 bp", "5 bp (primary)"),
+  Stress_Days = c(1458, 1212, 313),
+  Pct = c("72.2\\%", "60.1\\%", "15.5\\%"),
+  stringsAsFactors = FALSE
+)
+
+kable(thr_df, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Regime Classification Sensitivity to Threshold",
+      col.names = c("Threshold ($|$SOFR--EFFR$|$ >)", "Stress Days", "Share"),
+      align = c("l", "c", "c")) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+Under the 5 bp threshold, 313 days (15.5\%) are classified as stress and 1,705 days (84.5\%) as calm. This asymmetric split is economically appropriate: genuine funding dislocations should be rare events in a well-functioning ample-reserves system, not the norm. By contrast, a 2 bp threshold classifies 60\% of the sample as stress---an implausibly high proportion that conflates routine rate fluctuations with genuine dislocations. The 5 bp threshold isolates episodes such as the September 2019 repo crisis (SOFR--EFFR = 295 bp), the March 2020 COVID dash-for-cash, quarter-end pressures, and the 2022 quantitative tightening period.
+
+## Stress Episode Identification
+
+```{r episode_table}
+ep_df <- data.frame(
+  Start = c("2018-12-28", "2019-06-26", "2019-09-12",
+            "2020-03-11", "2021-03-11", "2022-06-07",
+            "2022-09-07", "2025-09-25"),
+  Event = c("Quarter-end", "Quarter-end", "Sep 2019 repo crisis",
+            "COVID dash-for-cash", "Post-SLR expiry", "QT/rate hiking",
+            "QT/rate hiking", "Quarter-end"),
+  Days = c(6, 6, 5, 13, 34, 18, 19, 39),
+  Max_SOFR = c("0.75", "0.17", "2.95", "0.29", "0.06", "0.14", "0.12", "0.36"),
+  Cum_Baa = c("+0.03", "--0.11", "--0.04", "+1.00", "--0.14", "+0.34", "+0.02", "+0.05"),
+  Cum_Aaa = c("--0.02", "--0.13", "--0.04", "+0.12", "--0.16", "+0.28", "--0.05", "+0.07"),
+  stringsAsFactors = FALSE
+)
+
+kable(ep_df, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Selected Major Stress Episodes ($|$SOFR--EFFR$| > 5$ bp, $\\geq 5$ days)",
+      col.names = c("Start", "Event", "Days", "Max $|$SOFR--EFFR$|$",
+                     "Cum. $\\Delta$Baa", "Cum. $\\Delta$Aaa"),
+      align = c("l", "l", "c", "c", "c", "c")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 9) %>%
+  footnote(general = "Cumulative changes in percentage points. Max SOFR--EFFR in percentage points.",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+The stress episode table reveals heterogeneity in outcomes. The March 2020 COVID episode produced a massive +100 bp cumulative Baa widening but only +12 bp for Aaa---consistent with credit-risk differentiation during a systemic shock. The September 2019 repo crisis, despite producing the largest SOFR--EFFR spike (295 bp), generated only modest credit spread movements (--4 bp for both Aaa and Baa), suggesting that repo dislocations can be contained within the money market without fully transmitting to credit. The 2022 QT episodes show mixed-sign credit responses, reflecting the competing forces of monetary tightening (widening) and economic resilience (tightening).
+
+## Stress Episode Timeline
+
+```{r regime_timeline, fig.cap="SOFR--EFFR with regime classification (Post-2018). Red bars indicate stress days ($|$SOFR--EFFR$| > 5$ bp). The September 2019 spike (2.95 pp) and the March 2020 COVID episode are the most prominent stress events.", fig.height=3}
+knitr::include_graphics(file.path(WD, "output", "figures", "fig_sofr_regime_timeline.pdf"))
+```
+
+
+# Conditional Summary Statistics
+
+```{r regime_stats}
+stats_df <- data.frame(
+  Variable = c("SOFR--EFFR", "$\\Delta$Baa", "$\\Delta$Aaa",
+               "$\\Delta$(Baa--Aaa)", "$\\Delta$Reserves"),
+  Mean_C = c("--0.011", "--0.0009", "--0.0002", "--0.0007", "1,190"),
+  SD_C = c("0.024", "0.030", "0.034", "0.023", "35,564"),
+  Mean_S = c("0.047", "0.0050", "0.0018", "0.0031", "--3,857"),
+  SD_S = c("0.199", "0.044", "0.061", "0.040", "53,752"),
+  VR = c("---", "2.14***", "3.20***", "2.99***", "2.29***"),
+  stringsAsFactors = FALSE
+)
+
+kable(stats_df, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Summary Statistics by Regime (Post-2018, 5 bp Threshold)",
+      col.names = c("Variable", "Mean", "SD", "Mean", "SD", "Var. Ratio"),
+      align = c("l", "c", "c", "c", "c", "c")) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 9) %>%
+  add_header_above(c(" " = 1, "Calm (1,705 days)" = 2,
+                      "Stress (313 days)" = 2, " " = 1)) %>%
+  footnote(general = "Variance ratio = Var(Stress)/Var(Calm). *** denotes F-test rejection at 1 percent level. Reserves in millions USD.",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+The regime-conditional statistics reveal sharp contrasts. SOFR--EFFR volatility is 8 times higher in the stress regime (SD = 0.199 vs. 0.024), confirming that the 5 bp threshold effectively separates tranquil from volatile funding conditions. More importantly, credit spread volatility is dramatically amplified during stress:
+
+- **$\Delta$Aaa variance is 3.2 times higher** during stress ($F$-test $p < 0.001$), the largest amplification factor among the credit variables.
+- **$\Delta$Baa variance is 2.1 times higher** during stress ($p < 0.001$).
+- **$\Delta$(Baa--Aaa) variance is 3.0 times higher** during stress ($p < 0.001$), indicating that the quality differential itself becomes much more volatile during funding dislocations.
+
+These variance ratios are substantially larger than those obtained with a 2 bp threshold, confirming that the 5 bp cutoff more cleanly separates high-volatility stress episodes from normal operations.
+
+The mean $\Delta$Baa during stress is +0.50 bp/day, significantly positive ($t$-test $p = 0.024$), while Aaa means are not significantly different across regimes ($p = 0.56$). This asymmetry---Baa spreads widen on average during stress while Aaa does not---is consistent with credit-risk differentiation: during funding dislocations, lower-grade credit absorbs more of the repricing.
+
+
+# Regime-Dependent Granger Causality
+
+This is the core analysis: we replicate the Granger causality tests from Section 5.3 separately for stress and calm periods.
+
+## Stress-Period Results
+
+```{r granger_stress}
+stress_gc <- gc_regime %>%
+  filter(Regime == "Stress", !is.na(Lag)) %>%
+  mutate(
+    X_label = case_when(
+      X == "SOFR_EFFR" ~ "SOFR--EFFR",
+      X == "d_Reserves" ~ "$\\Delta$Reserves",
+      X == "d_TGA" ~ "$\\Delta$TGA",
+      TRUE ~ X),
+    Y_label = case_when(
+      Y == "d_Baa" ~ "$\\Delta$Baa",
+      Y == "d_Aaa" ~ "$\\Delta$Aaa",
+      Y == "d_Baa_Aaa" ~ "$\\Delta$(Baa--Aaa)",
+      TRUE ~ Y),
+    Direction = paste0(X_label, " $\\rightarrow$ ", Y_label)
+  ) %>%
+  dplyr::select(Direction, Lag, N, F_stat, p_value, Sig)
+
+kable(stress_gc, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Granger Causality Tests --- Stress Regime ($|$SOFR--EFFR$| > 5$ bp)",
+      col.names = c("Direction", "Lag", "$N$", "$F$-stat", "$p$-value", ""),
+      digits = c(0, 0, 0, 3, 4, 0),
+      align = c("l", "c", "c", "c", "c", "l")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 9) %>%
+  footnote(general = "Significance: *** p<0.01, ** p<0.05, * p<0.10. Tests restricted to stress-regime days only (N = 309 after differencing).",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+During stress periods (309 observations after differencing), most Granger tests are insignificant. The one exception is the collateral-quality channel:
+
+- **$\Delta$Reserves $\rightarrow$ $\Delta$(Baa--Aaa)**: Significant at both lags ($F = 6.57$, $p = 0.011$ at lag 1; $F = 2.71$, $p = 0.021$ at lag 5). During genuine funding dislocations, reserve changes predict the credit quality differential---consistent with the collateral hierarchy mechanism where Aaa bonds, as closer Treasury substitutes, absorb reserve-driven shocks differently from Baa bonds.
+
+- **SOFR--EFFR and $\Delta$TGA**: Neither shows significant predictive power for any credit variable during stress. SOFR--EFFR's insignificance is notable: even when the funding spread exhibits large variation (SD = 0.199), it does not Granger-cause credit spreads. This may reflect the chaotic, multi-directional nature of stress episodes where cause-effect timing breaks down, or the limited sample size (309 observations) reducing statistical power.
+
+The paucity of significant stress-period results---only 2 out of 18 tests significant at 5\%---should be interpreted carefully. With only 309 observations and 5 lags consuming degrees of freedom rapidly, the tests have limited power. A non-significant result in the stress regime does not mean the channel is absent; it means we cannot statistically distinguish it from noise in this sample.
+
+## Calm-Period Results
+
+```{r granger_calm}
+calm_gc <- gc_regime %>%
+  filter(Regime == "Calm", !is.na(Lag)) %>%
+  mutate(
+    X_label = case_when(
+      X == "SOFR_EFFR" ~ "SOFR--EFFR",
+      X == "d_Reserves" ~ "$\\Delta$Reserves",
+      X == "d_TGA" ~ "$\\Delta$TGA",
+      TRUE ~ X),
+    Y_label = case_when(
+      Y == "d_Baa" ~ "$\\Delta$Baa",
+      Y == "d_Aaa" ~ "$\\Delta$Aaa",
+      Y == "d_Baa_Aaa" ~ "$\\Delta$(Baa--Aaa)",
+      TRUE ~ Y),
+    Direction = paste0(X_label, " $\\rightarrow$ ", Y_label)
+  ) %>%
+  dplyr::select(Direction, Lag, N, F_stat, p_value, Sig)
+
+kable(calm_gc, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Granger Causality Tests --- Calm Regime ($|$SOFR--EFFR$| \\leq 5$ bp)",
+      col.names = c("Direction", "Lag", "$N$", "$F$-stat", "$p$-value", ""),
+      digits = c(0, 0, 0, 3, 4, 0),
+      align = c("l", "c", "c", "c", "c", "l")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 9) %>%
+  footnote(general = "Significance: *** p<0.01, ** p<0.05, * p<0.10. Tests restricted to calm-regime days only (N = 1,695 after differencing).",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+The calm regime, with 1,695 observations, reveals a strikingly different pattern. Multiple funding-to-credit channels are statistically significant:
+
+**Price channel (SOFR--EFFR):**
+
+- **SOFR--EFFR $\rightarrow$ $\Delta$Aaa**: Highly significant at both lags ($F = 8.63$, $p = 0.003$ at lag 1; $F = 2.87$, $p = 0.014$ at lag 5). This is the strongest individual result in the regime analysis. Even when the SOFR--EFFR spread remains within 5 bp of zero, its small day-to-day variations contain predictive information for Aaa spread changes.
+- **SOFR--EFFR $\rightarrow$ $\Delta$Baa**: Marginally significant at lag 1 ($F = 3.55$, $p = 0.060$), losing significance at lag 5. The weaker result for Baa relative to Aaa is consistent with the collateral channel: SOFR--EFFR reflects repo market conditions, which directly affect the pricing of high-grade collateral (Aaa) more than lower-grade credit.
+- **SOFR--EFFR $\rightarrow$ $\Delta$(Baa--Aaa)**: Marginally significant at lag 1 ($F = 2.87$, $p = 0.091$).
+
+**Quantity channel ($\Delta$Reserves):**
+
+- **$\Delta$Reserves $\rightarrow$ $\Delta$Aaa**: Significant at lag 1 ($F = 4.98$, $p = 0.026$), confirming the collateral channel during normal operations.
+- **$\Delta$Reserves $\rightarrow$ $\Delta$Baa**: Marginally significant at lag 1 ($F = 3.73$, $p = 0.054$).
+
+**Fiscal channel ($\Delta$TGA):**
+
+- **$\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa)**: Significant at lag 1 ($F = 4.38$, $p = 0.037$) and highly significant at lag 5 ($F = 5.42$, $p = 0.0001$). This is the strongest TGA result in the entire analysis---the fiscal plumbing channel's effect on the credit quality differential operates most clearly during normal conditions, where the 5-day predictive horizon aligns with the weekly publication frequency of Treasury cash balance data.
+
+## The Regime Contrast
+
+```{r regime_summary}
+sum_df <- data.frame(
+  Channel = c("SOFR--EFFR $\\rightarrow$ $\\Delta$Aaa",
+              "SOFR--EFFR $\\rightarrow$ $\\Delta$Baa",
+              "$\\Delta$Reserves $\\rightarrow$ $\\Delta$Aaa",
+              "$\\Delta$Reserves $\\rightarrow$ $\\Delta$(Baa--Aaa)",
+              "$\\Delta$TGA $\\rightarrow$ $\\Delta$(Baa--Aaa)"),
+  Calm_L1 = c("0.003***", "0.060*", "0.026**", "0.461", "0.037**"),
+  Calm_L5 = c("0.014**", "0.190", "0.155", "0.889", "0.0001***"),
+  Stress_L1 = c("0.917", "0.548", "0.167", "0.011**", "0.993"),
+  Stress_L5 = c("0.673", "0.754", "0.233", "0.021**", "0.761"),
+  stringsAsFactors = FALSE
+)
+
+kable(sum_df, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Regime Contrast: $p$-values for Key Granger Causality Tests (5 bp Threshold)",
+      col.names = c("Channel", "Lag 1", "Lag 5", "Lag 1", "Lag 5"),
+      align = c("l", "c", "c", "c", "c")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 9) %>%
+  add_header_above(c(" " = 1, "Calm ($|$SOFR--EFFR$| \\\\leq 5$ bp)" = 2,
+                      "Stress ($|$SOFR--EFFR$| > 5$ bp)" = 2), escape = FALSE)
+```
+
+Table 6 reveals a clear division of labour between regimes:
+
+- The **price channel** (SOFR--EFFR) and the **fiscal channel** ($\Delta$TGA) operate during **calm** conditions, when small funding variations transmit predictably to credit spreads through orderly arbitrage and portfolio rebalancing.
+- The **collateral-quality channel** ($\Delta$Reserves $\rightarrow$ Baa--Aaa differential) activates during **stress**, when reserve scarcity forces differentiated repricing across the credit quality spectrum.
+
+This is not a simple on/off pattern but a regime-dependent *rotation* of active channels.
+
+
+# Rolling-Window Correlation
+
+```{r rolling_corr, fig.cap="60-day rolling correlation between SOFR--EFFR and $\\Delta$(Baa--Aaa). The correlation is highly time-varying, oscillating between --0.50 and +0.30. The time-varying sign confirms the nonlinear nature of the funding-credit relationship.", fig.height=3.5}
+knitr::include_graphics(file.path(WD, "output", "figures", "fig_rolling_corr_sofr_baaaaa.pdf"))
+```
+
+The 60-day rolling correlation between SOFR--EFFR and $\Delta$(Baa--Aaa) oscillates widely, ranging from approximately --0.50 to +0.30. The time-varying, sign-switching correlation confirms that the unconditional near-zero correlation documented in Section 5.2 masks substantial temporal variation: the relationship between funding price and credit quality is not absent but unstable, consistent with the regime-dependent Granger results.
+
+
+# Scatter Plots by Regime
+
+```{r scatter_sofr, fig.cap="SOFR--EFFR vs. $\\Delta$(Baa--Aaa) by regime. During stress, both variables exhibit much wider dispersion but no clear linear relationship. During calm, the relationship is concentrated near zero with weak negative slope.", fig.height=3.5}
+knitr::include_graphics(file.path(WD, "output", "figures", "fig_scatter_regime_sofr_baaaaa.pdf"))
+```
+
+```{r scatter_reserves, fig.cap="$\\Delta$Reserves vs. $\\Delta$Aaa by regime. The stress regime shows wider dispersion in both variables, with a weak negative relationship (reserve injections compress Aaa spreads) visible in the OLS fit line.", fig.height=3.5}
+knitr::include_graphics(file.path(WD, "output", "figures", "fig_scatter_regime_reserves_aaa.pdf"))
+```
+
+The scatter plots visually confirm the regime-conditional statistics. The stress-regime observations form a wider cloud with no obvious linear structure, while the calm-regime observations are tightly clustered near the origin. The amplified dispersion during stress is consistent with the 2--3x variance ratios documented in Table 3.
+
+
+# Interpretation
+
+## The Channel Rotation Mechanism
+
+The regime-dependent results reveal a more sophisticated transmission architecture than the simple ``stress activates the channel'' hypothesis. Three distinct patterns emerge:
+
+**During calm conditions** ($|$SOFR--EFFR$| \leq 5$ bp, 85\% of days): The funding-credit channel operates through orderly, predictable mechanisms. Small variations in SOFR--EFFR predict Aaa spread changes with high significance ($p = 0.003$), consistent with the repo-collateral arbitrage that links Treasury-adjacent funding rates to investment-grade credit pricing. TGA changes predict the quality differential at the 5-day horizon ($p = 0.0001$), reflecting the weekly fiscal plumbing cycle. These channels operate precisely *because* conditions are orderly: price discovery functions normally, and arbitrage transmits funding signals to credit markets.
+
+**During stress** ($|$SOFR--EFFR$| > 5$ bp, 15\% of days): Only the collateral-quality channel survives ($\Delta$Reserves $\rightarrow$ Baa--Aaa, $p = 0.011$). The price and fiscal channels lose significance, not necessarily because they stop operating, but because stress episodes introduce confounding dynamics---flight-to-quality flows, dealer deleveraging, central bank interventions---that overwhelm the orderly transmission mechanisms and reduce the signal-to-noise ratio. The collateral channel's survival during stress is consistent with Adrian, Boyarchenko, and Shachar (2017): reserve scarcity affects Aaa and Baa differentially because Aaa bonds are closer substitutes for Treasury collateral.
+
+**The power caveat.** The stress regime contains only 309 observations. With 5 lags, each Granger test consumes 10 degrees of freedom, leaving limited power to detect moderate effects. A back-of-envelope power calculation suggests that detecting an $R^2$ increment of 1\% at 5\% significance requires approximately 800 observations---well above the stress sample size. The calm regime's 1,695 observations provide roughly 5 times the power. Therefore, the asymmetric significance pattern partly reflects *differential statistical power* rather than necessarily differential economic magnitude.
+
+## Credit Spread Volatility Amplification
+
+The 2.1--3.2x increase in credit spread variance during stress is consistent with the Brunnermeier--Pedersen (2009) margin spiral, where funding constraints force leveraged investors to reduce positions, increasing market volatility, which further tightens funding constraints. The fact that $\Delta$Aaa variance amplifies most (3.2x) while $\Delta$Baa amplifies less (2.1x) is informative: Aaa bonds, as repo collateral, are most directly exposed to collateral-value spirals during funding dislocations. The quality differential variance amplifies by 3.0x, indicating that the relative pricing of Aaa versus Baa becomes substantially more volatile during stress---the collateral hierarchy becomes more consequential precisely when funding conditions deteriorate.
+
+## Implications for the Unconditional VAR
+
+The regime analysis provides context for the unconditional VAR findings (Section 5.4). The small overall SOFR--EFFR contribution (0.3\% of $\Delta$Baa variance) reflects the average across two regimes with different dynamics: an 85\%-weight calm regime where SOFR--EFFR has significant predictive power but small variation (SD = 0.024), and a 15\%-weight stress regime where SOFR--EFFR has large variation but no detectable linear predictive power. The unconditional average understates the calm-regime channel and cannot capture the stress-regime's nonlinear, multi-directional dynamics.
+
+
+# Robustness: Threshold Sensitivity
+
+The choice of a 5 bp threshold is informed by the institutional setting but ultimately involves judgment. Lower thresholds (2 bp) classify 60\% of the sample as stress, which is implausibly high and conflates routine variation with genuine dislocations. Higher thresholds (10 bp) would leave fewer than 200 stress-regime observations, further eroding statistical power.
+
+The core finding---that funding channels differ across regimes rather than simply switching on and off---is qualitatively robust to threshold variation. At any reasonable threshold, the calm regime produces more significant Granger results than the stress regime, reflecting both the power advantage of a larger sample and the orderly price-discovery mechanism that operates during normal conditions. The specific pattern of which channels are significant may vary with the threshold, but the *existence* of regime-dependent heterogeneity is robust.
+
+
+\newpage
+
+# References
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+Adrian, T., Boyarchenko, N., and Shachar, O. (2017). Dealer balance sheets and bond liquidity provision. *Journal of Monetary Economics*, 89, 92--109.
+
+Brunnermeier, M. K. and Pedersen, L. H. (2009). Market liquidity and funding liquidity. *Review of Financial Studies*, 22(6), 2201--2238.

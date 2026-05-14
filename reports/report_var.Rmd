@@ -1,0 +1,388 @@
+---
+title: "Section 5.4 --- VAR Estimation and Impulse Response Functions"
+subtitle: "The Plumbing of Liquidity: How Funding Conditions Transmit to Credit Spreads"
+author: "Jordi Camps Triay"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    latex_engine: pdflatex
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    keep_tex: false
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage{array}
+  - \usepackage{float}
+  - \usepackage{caption}
+  - \usepackage{amsmath}
+  - \usepackage{geometry}
+  - \geometry{margin=1in}
+  - \usepackage{setspace}
+  - \onehalfspacing
+  - \captionsetup[table]{skip=8pt}
+  - \captionsetup[figure]{skip=6pt}
+  - \usepackage{graphicx}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, warning = FALSE, message = FALSE,
+  fig.align = "center", fig.width = 7, fig.height = 4.5,
+  out.width = "100%"
+)
+library(readr)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+WD <- normalizePath(file.path(dirname(knitr::current_input(dir = TRUE)), ".."))
+knitr::opts_knit$set(root.dir = WD)
+
+res <- read_csv(file.path(WD, "output", "granger_all_results.csv"), show_col_types = FALSE)
+```
+
+\newpage
+
+# Introduction
+
+This section presents the VAR estimation and impulse response analysis that constitutes the core structural step of the empirical chapter. While the Granger causality tests (Section 5.3) established *which* funding variables contain predictive information for credit spreads, the VAR framework allows us to trace the *dynamic path* of transmission: how a structural shock to funding conditions propagates through the system over time, and what share of credit spread variation is attributable to each channel.
+
+We estimate four VAR specifications: a 5-variable model on the post-2018 sample (VAR A), a 4-variable model focusing on the Baa--Aaa quality differential (VAR B), a 5-variable model on the extended 2003--2026 sample with the SOFR proxy (VAR C), and a 5-variable model replacing SOFR--EFFR with the TED spread for the pre-LIBOR-cessation sample 2003--2022 (VAR D). Structural identification uses Cholesky decomposition, with the ordering justified by the exogeneity patterns documented in Section 5.3.
+
+# Methodology
+
+## The Reduced-Form VAR
+
+We estimate a reduced-form vector autoregression of order $p$:
+
+$$\mathbf{Y}_t = \mathbf{c} + \mathbf{A}_1 \mathbf{Y}_{t-1} + \mathbf{A}_2 \mathbf{Y}_{t-2} + \cdots + \mathbf{A}_p \mathbf{Y}_{t-p} + \mathbf{u}_t$$
+
+where $\mathbf{Y}_t$ is the $K \times 1$ vector of endogenous variables, $\mathbf{c}$ is a $K \times 1$ vector of intercepts, $\mathbf{A}_j$ are $K \times K$ coefficient matrices, and $\mathbf{u}_t \sim (0, \boldsymbol{\Sigma}_u)$ is the vector of reduced-form residuals with covariance matrix $\boldsymbol{\Sigma}_u$. The lag order $p$ is selected by information criteria (AIC, BIC, HQ) applied to the system as a whole.
+
+## Structural Identification: Cholesky Decomposition
+
+The reduced-form residuals $\mathbf{u}_t$ are linear combinations of the structural shocks $\boldsymbol{\varepsilon}_t$ that we seek to identify. The Cholesky decomposition achieves identification by imposing a recursive causal ordering: variables ordered earlier can affect all subsequent variables contemporaneously, but not vice versa. Formally, we decompose $\boldsymbol{\Sigma}_u = \mathbf{P} \mathbf{P}'$ where $\mathbf{P}$ is lower-triangular, so that $\mathbf{u}_t = \mathbf{P} \boldsymbol{\varepsilon}_t$ with $\boldsymbol{\varepsilon}_t \sim (0, \mathbf{I}_K)$.
+
+## Cholesky Ordering and Justification
+
+Our ordering places:
+
+\begin{center}
+$\Delta$TGA $\rightarrow$ $\Delta$Reserves $\rightarrow$ SOFR--EFFR $\rightarrow$ $\Delta$Aaa $\rightarrow$ $\Delta$Baa
+\end{center}
+
+The rationale proceeds from most exogenous to most endogenous:
+
+1. **$\Delta$TGA (first):** Treasury General Account fluctuations are driven by fiscal cash flows---tax collections, debt issuance schedules, Congressional spending authorizations---that are determined by fiscal policy rather than by daily financial market conditions. This exogeneity was partially confirmed in the Granger tests, where reverse causality from credit to TGA likely reflects common macro exposure rather than direct feedback.
+
+2. **$\Delta$Reserves (second):** Reserve balances respond to TGA changes (mechanically: a TGA drawdown is a reserve injection) and to monetary policy operations, but operate on a slower frequency than market prices. The Granger tests confirmed bidirectional causality between reserves and credit at longer lags (5--10 days), but the contemporaneous effect runs from reserves to markets, not the reverse.
+
+3. **SOFR--EFFR (third):** The funding price is market-determined but exogenous to credit spreads: the reverse causality tests showed no significant feedback from $\Delta$Baa or $\Delta$Aaa to SOFR--EFFR at any lag ($p > 0.68$ uniformly). This is the strongest exogeneity result in the analysis.
+
+4. **$\Delta$Aaa (fourth):** Aaa spreads respond to all funding channels (collateral, price, quantity) but transmit to Baa spreads through the credit quality hierarchy.
+
+5. **$\Delta$Baa (last, most endogenous):** Baa spreads respond to all preceding variables and absorb all contemporaneous funding shocks not already captured by Aaa.
+
+## Impulse Response Functions and FEVD
+
+Orthogonalized impulse response functions (IRFs) trace the response of each variable to a one-standard-deviation structural shock over a 30-business-day horizon (approximately six weeks). Confidence intervals are constructed via bootstrap resampling (500 replications, 95\% level). The forecast error variance decomposition (FEVD) quantifies how much of each variable's forecast error at horizon $h$ is attributable to each structural shock.
+
+# Lag Order Selection
+
+```{r lag_table}
+lag_df <- data.frame(
+  Criterion = c("AIC", "BIC (SC)", "HQ", "FPE"),
+  VAR_A = c(15, 1, 5, 15),
+  VAR_B = c(15, 1, 5, 15),
+  VAR_C = c(15, 5, 10, 15),
+  VAR_D = c(15, 5, 10, 15),
+  stringsAsFactors = FALSE
+)
+
+kable(lag_df, booktabs = TRUE, longtable = FALSE,
+      caption = "Optimal Lag Order by Information Criterion",
+      col.names = c("Criterion", "VAR A (Post-2018)", "VAR B (Diff., Post-2018)",
+                     "VAR C (Extended)", "VAR D (TED, 2003--22)"),
+      align = c("l", "c", "c", "c", "c")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 10)
+```
+
+The information criteria diverge substantially. AIC selects 15 lags (three trading weeks) for all specifications, while BIC selects just 1 lag for the post-2018 models and 5 for the extended and TED samples. HQ, which penalizes complexity between AIC and BIC, selects 5 lags for the post-2018 and 10 for the extended and TED samples.
+
+We adopt the AIC-selected lag order of 15 for all primary specifications. Three considerations motivate this choice. First, the Granger tests in Section 5.3 documented significant predictive relationships at all tested lags (1, 5, 10), suggesting that longer lag structures contain relevant dynamics. Second, AIC minimizes the Kullback--Leibler divergence and prioritizes prediction accuracy, which is appropriate when the goal is to trace dynamic responses rather than to build the most parsimonious model. Third, even for the largest system (VAR D with 4,639 effective observations and 76 parameters per equation), we retain approximately 61 effective observations per parameter---well above conventional minimums. All estimated VARs satisfy the stability condition (maximum eigenvalue modulus below 1).
+
+# Post-2018 Results: VAR A (5-Variable Model)
+
+## Model Diagnostics
+
+```{r diagnostics_table}
+diag_df <- data.frame(
+  Statistic = c("Variables", "Cholesky ordering", "Lags (AIC)", "Effective obs.",
+                "Max eigenvalue", "Stable",
+                "Portmanteau $\\chi^2$ (20 lags)", "Portmanteau $p$-value"),
+  Value = c("$\\Delta$TGA, $\\Delta$Reserves, SOFR--EFFR, $\\Delta$Aaa, $\\Delta$Baa",
+            "$\\Delta$TGA $\\rightarrow$ $\\Delta$Reserves $\\rightarrow$ SOFR--EFFR $\\rightarrow$ $\\Delta$Aaa $\\rightarrow$ $\\Delta$Baa",
+            "15", "1,989", "0.949", "Yes (all roots inside unit circle)",
+            "190.4", "0.0001"),
+  stringsAsFactors = FALSE
+)
+
+kable(diag_df, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "VAR A Specification and Diagnostics (Post-2018)",
+      col.names = c("", ""),
+      align = c("l", "l")) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 9)
+```
+
+The Portmanteau test rejects the null of no serial correlation ($p = 0.0001$), indicating that the VAR residuals are not white noise. This is common in daily financial data and typically reflects GARCH-type volatility clustering rather than omitted autoregressive dynamics. The serial correlation does not invalidate the impulse response analysis---the point estimates remain consistent---but it does widen the effective confidence intervals. The bootstrap procedure used for the IRF confidence bands accounts for this by resampling from the actual (non-white-noise) residuals.
+
+```{r rsquared_table}
+rsq_df <- data.frame(
+  Equation = c("$\\Delta$TGA", "$\\Delta$Reserves", "Funding price",
+               "$\\Delta$Aaa", "$\\Delta$Baa"),
+  R2_post = c(0.1303, 0.0660, 0.1878, 0.0812, 0.0806),
+  R2_ext  = c(0.0977, 0.0379, 0.5709, 0.0358, 0.0793),
+  R2_ted  = c(0.1030, 0.0444, 0.9482, 0.0476, 0.1055),
+  stringsAsFactors = FALSE
+)
+
+kable(rsq_df, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Adjusted $R^2$ by VAR Equation. Funding price is SOFR--EFFR in VARs A/C and TED spread in VAR D.",
+      col.names = c("Equation", "VAR A (Post-2018)", "VAR C (Extended)", "VAR D (TED, 2003--22)"),
+      digits = 4, align = c("l", "c", "c", "c")) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+The adjusted $R^2$ values for the credit spread equations are low (8.1\% for both $\Delta$Aaa and $\Delta$Baa in the post-2018 sample). This is typical of daily financial return regressions and reflects the well-known difficulty of predicting asset price changes at high frequency. The five funding variables in our system capture only a small fraction of daily credit spread variation; the remainder is driven by firm-specific news, macro announcements, and other factors not in the model. The SOFR--EFFR equation has higher explanatory power (18.8\%), reflecting its own persistence and the mechanical relationship with reserve dynamics.
+
+In the extended sample, the SOFR--EFFR equation achieves $R^2 = 57.1\%$, a striking contrast with the post-2018 value. This reflects the much greater persistence and variation of the GC repo--EFFR spread in the pre-2018 period, when the money market operated with lower reserve levels and the spread exhibited sustained deviations from zero rather than the point-mass distribution observed post-2018.
+
+The TED spread VAR (VAR D) produces the most dramatic contrast: the TED equation achieves $R^2 = 94.8\%$, reflecting the extreme persistence of the TED spread as a slow-moving credit-risk barometer. More importantly for our transmission question, the $\Delta$Baa equation achieves $R^2 = 10.6\%$ in the TED VAR---a 31\% improvement over the post-2018 SOFR specification (8.1\%). This increase suggests that the TED spread, which bundles pure funding costs with interbank credit risk via LIBOR, explains a meaningfully larger share of daily credit spread variation than the ``clean'' SOFR--EFFR spread.
+
+## Granger Causality within the VAR
+
+The multivariate Granger causality test within the VAR framework confirms the bivariate results from Section 5.3:
+
+- **$\Delta$Reserves $\rightarrow$ others:** $F = 2.41$, $p < 0.0001$ (highly significant)
+- **$\Delta$TGA $\rightarrow$ others:** $F = 1.28$, $p = 0.071$ (marginally significant)
+- **SOFR--EFFR $\rightarrow$ others:** $F = 0.87$, $p = 0.758$ (not significant)
+
+The reserve channel dominates in the post-2018 multivariate setting, consistent with the bivariate Granger results. SOFR--EFFR's insignificance in the joint test confirms that the price channel has no linear predictive power in this sample period.
+
+## Impulse Response Functions
+
+```{r irf_panel_post2018, fig.cap="Orthogonalized Impulse Response Functions (Post-2018). Each panel shows the response of a credit spread measure to a one-standard-deviation Cholesky shock to a funding variable. Shaded areas: 95\\% bootstrap confidence intervals (500 replications).", fig.height=7}
+knitr::include_graphics(file.path(WD, "output", "figures", "fig_irf_panel_post2018.pdf"))
+```
+
+Figure 1 presents the six key impulse response functions tracing funding shocks to credit spread responses.
+
+**Reserve shocks.** A positive shock to $\Delta$Reserves generates an oscillating response in $\Delta$Aaa that is initially negative (days 1--3), rebounds to positive around days 5--7, and then oscillates with decreasing amplitude. The initial negative response is consistent with the collateral channel: an unexpected reserve injection loosens collateral constraints, compressing Aaa spreads. However, the subsequent oscillation and wide confidence bands prevent a clean structural interpretation. The response of $\Delta$Baa to the same reserve shock is smaller and more persistently negative over the first 10 days, consistent with a weaker but more gradual transmission to lower-grade credit.
+
+**TGA shocks.** A positive $\Delta$TGA shock (Treasury receives cash, draining reserves) initially increases $\Delta$Aaa on impact, with subsequent oscillation. The $\Delta$Baa response shows a more persistent negative pattern over days 3--10. The TGA impulse responses are noisier than the reserve responses, reflecting the slower fiscal-plumbing transmission and the weekly publication frequency of TGA data.
+
+**SOFR--EFFR shocks.** As expected from the Granger analysis, the SOFR--EFFR shock produces essentially no response in either credit spread measure. The IRF point estimates hover near zero throughout the 30-day horizon, and the confidence bands comfortably include zero. This null result for the price channel in the unconditional post-2018 sample is entirely consistent with the distributional properties of SOFR--EFFR documented in Section 5.2.
+
+## Quality Differential Responses (VAR B)
+
+```{r irf_quality_diff, fig.cap="Impulse Responses: Funding Shocks to the Baa--Aaa Quality Differential (Post-2018, VAR B). A negative response means the quality differential narrows (Aaa widens relative to Baa).", fig.height=3.5}
+knitr::include_graphics(file.path(WD, "output", "figures", "fig_irf_panel_quality_diff.pdf"))
+```
+
+VAR B replaces the separate Aaa and Baa equations with the Baa--Aaa quality differential, isolating the relative credit channel. A reserve shock produces an initial negative effect on $\Delta$(Baa--Aaa) at days 1--3 that subsequently oscillates. The TGA shock generates a more persistent negative response, consistent with fiscal cash-flow effects compressing the quality differential over a 1--3 week horizon. The SOFR--EFFR response is small and insignificant, confirming the post-2018 price channel null.
+
+## Forecast Error Variance Decomposition
+
+```{r fevd_table}
+fevd_df <- data.frame(
+  Response = c(rep("$\\Delta$Aaa", 5), rep("$\\Delta$Baa", 5)),
+  Horizon = rep(c(1, 5, 10, 20, 30), 2),
+  TGA = c(0.1, 0.2, 0.4, 0.6, 0.6, 0.0, 0.1, 0.2, 0.5, 0.5),
+  Reserves = c(0.0, 0.7, 0.7, 1.4, 1.5, 0.0, 0.8, 0.9, 1.5, 1.6),
+  SOFR = c(0.0, 0.2, 0.4, 0.6, 0.6, 0.0, 0.1, 0.1, 0.3, 0.3),
+  Own = c(99.9, 95.9, 94.4, 92.0, 91.8, 37.2, 35.1, 35.7, 35.3, 35.3),
+  Cross = c(0.0, 3.0, 4.2, 5.5, 5.5, 62.7, 63.8, 63.0, 62.4, 62.3),
+  stringsAsFactors = FALSE
+)
+
+kable(fevd_df, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Forecast Error Variance Decomposition (Post-2018, VAR A)",
+      col.names = c("Response", "$h$", "$\\Delta$TGA", "$\\Delta$Res.",
+                     "SOFR--EFFR", "Own", "Cross-credit"),
+      digits = 1, align = c("l", "c", "c", "c", "c", "c", "c")) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 9) %>%
+  add_header_above(c(" " = 2, "Funding shocks (\\\\%)" = 3,
+                      "Credit shocks (\\\\%)" = 2), escape = FALSE) %>%
+  footnote(general = "Values are percentages of forecast error variance at each horizon. `Cross-credit' is the share explained by the other credit spread (d\\_Baa for d\\_Aaa, and vice versa).",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+```{r fevd_plot, fig.cap="Forecast Error Variance Decomposition (Post-2018, VAR A). Own shocks dominate for d\\_Aaa (91--99\\%). For d\\_Baa, Aaa shocks explain approximately 63\\% of variance, reflecting strong within-credit transmission.", fig.height=3.5}
+knitr::include_graphics(file.path(WD, "output", "figures", "fig_fevd_post2018.pdf"))
+```
+
+The FEVD reveals three important patterns:
+
+1. **Own shocks dominate Aaa dynamics.** Over 91\% of $\Delta$Aaa forecast error variance at all horizons is attributable to its own structural shock. The combined contribution of all three funding variables reaches only 2.7\% even at the 30-day horizon. This means that daily Aaa spread movements are overwhelmingly driven by factors outside the funding system---macro news, flight-to-quality flows, supply effects, and idiosyncratic credit events.
+
+2. **Aaa shocks dominate Baa dynamics.** Approximately 63\% of $\Delta$Baa forecast error variance is explained by $\Delta$Aaa shocks, while only 35\% comes from Baa's own shock. This strong cross-credit transmission suggests that the credit quality hierarchy is the primary channel through which information propagates: shocks first move Aaa spreads and then transmit to Baa. The funding variables' direct contribution to $\Delta$Baa variance is even smaller (2.4\% at 30 days) than for $\Delta$Aaa.
+
+3. **Reserve shocks are the largest funding contributor.** Among the three funding variables, $\Delta$Reserves consistently explains the most variance---about 1.5\% at the 30-day horizon for both $\Delta$Aaa and $\Delta$Baa. TGA contributes 0.5--0.6\% and SOFR--EFFR contributes 0.3--0.6\%. While these magnitudes are small in absolute terms, the ranking is informative: the quantity channel (reserves) dominates the price channel (SOFR--EFFR), consistent with the Granger evidence.
+
+## Interpretation of Modest Effects
+
+The small unconditional contribution of funding variables to credit spread variance requires honest interpretation. Three explanations are consistent with both the data and the theoretical framework:
+
+**First, the transmission is episodic.** The post-2018 period is characterized by abundant reserves and compressed funding spreads for most of its duration. The funding-to-credit channel activates primarily during stress episodes (September 2019 repo crisis, March 2020 COVID dash-for-cash, quarter-end pressures), which represent a small fraction of the sample. An unconditional VAR averages across stress and calm periods, diluting the episodic effects. Section 5.5 addresses this through regime-dependent analysis.
+
+**Second, the VAR captures only linear dynamics.** SOFR--EFFR's near-zero distribution with extreme right-tail events is fundamentally nonlinear. The VAR's linear coefficient structure cannot capture threshold effects where the transmission channel activates only when the funding spread exceeds some critical level.
+
+**Third, daily frequency introduces noise.** Credit spreads at the daily frequency are dominated by bid--ask bounce, market microstructure effects, and high-frequency news that have nothing to do with funding conditions. At lower frequencies (weekly or monthly), the signal-to-noise ratio improves, and funding variables explain a larger share of credit spread variation. Our choice to work at daily frequency preserves the timing precision needed for the Granger and IRF analysis, but at the cost of lower $R^2$.
+
+# Extended Sample Results (VAR C)
+
+```{r irf_extended, fig.cap="Impulse Response Functions --- Extended Sample (2003--2026). The SOFR--EFFR shock now generates a visible negative response in d\\_Baa (bottom right), reflecting the pre-2018 period when the GC repo--EFFR spread had continuous variation.", fig.height=7}
+knitr::include_graphics(file.path(WD, "output", "figures", "fig_irf_panel_extended.pdf"))
+```
+
+The extended sample VAR reveals a striking contrast with the post-2018 results:
+
+**The SOFR--EFFR price channel activates.** In the extended sample, a SOFR--EFFR (proxy) shock generates a clearly negative response in $\Delta$Baa over the first 5--10 business days, with tighter confidence bands than in the post-2018 specification. The SOFR--EFFR equation achieves $R^2 = 57.1\%$ (versus 18.8\% post-2018), reflecting the persistent, continuously varying nature of the GC repo--EFFR spread in the pre-2018 money market structure. This confirms that the price channel is structurally present but dormant in the post-2018 abundant-reserves regime.
+
+**The reserve channel is also present** in the extended sample, with $\Delta$Reserves shocks producing responses in $\Delta$Aaa that are qualitatively similar to the post-2018 patterns but with narrower confidence bands, reflecting the tripled sample size (5,689 vs. 1,989 effective observations).
+
+The extended-sample FEVD shows SOFR--EFFR explaining 1.7\% of $\Delta$Baa variance at the 30-day horizon---nearly six times its post-2018 contribution (0.3\%). This increase directly reflects the price channel's activation during the pre-2018 period.
+
+# TED Spread Results (VAR D, 2003--2022)
+
+## Motivation
+
+LIBOR was the dominant benchmark interest rate in global funding markets before its cessation in January 2022. The TED spread---the difference between 3-month LIBOR and the 3-month Treasury bill rate---served as the canonical measure of funding stress for nearly four decades. Unlike the SOFR--EFFR spread, which is narrowly defined as a secured-unsecured overnight arbitrage, the TED spread embeds interbank credit risk via the LIBOR component. This makes it a richer but less ``clean'' funding price variable: its predictive power for credit spreads may reflect both pure funding transmission and shared credit-risk exposure between banks (via LIBOR) and corporates (via Moody's spreads).
+
+VAR D replaces SOFR--EFFR with the TED spread and restricts the sample to May 2003--January 2022 (the period of continuous LIBOR availability), yielding 4,639 effective observations after lag adjustment. The Cholesky ordering is $\Delta$TGA $\rightarrow$ $\Delta$Reserves $\rightarrow$ TED spread $\rightarrow$ $\Delta$Aaa $\rightarrow$ $\Delta$Baa, paralleling the SOFR specifications.
+
+## Model Diagnostics
+
+```{r diag_ted}
+diag_ted <- data.frame(
+  Statistic = c("Variables", "Cholesky ordering", "Lags (AIC)", "Effective obs.",
+                "Max eigenvalue", "Stable",
+                "Portmanteau $\\chi^2$ (20 lags)", "Portmanteau $p$-value"),
+  Value = c("$\\Delta$TGA, $\\Delta$Reserves, TED spread, $\\Delta$Aaa, $\\Delta$Baa",
+            "$\\Delta$TGA $\\rightarrow$ $\\Delta$Reserves $\\rightarrow$ TED $\\rightarrow$ $\\Delta$Aaa $\\rightarrow$ $\\Delta$Baa",
+            "15", "4,639", "0.9876", "Yes (all roots inside unit circle)",
+            "396.4", "< 0.0001"),
+  stringsAsFactors = FALSE
+)
+
+kable(diag_ted, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "VAR D Specification and Diagnostics (TED Spread, 2003--2022)",
+      col.names = c("", ""),
+      align = c("l", "l")) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 9)
+```
+
+The maximum eigenvalue modulus is 0.9876---close to the unit boundary but still within the stability region. This high persistence reflects the TED spread's slow-moving nature: unlike SOFR--EFFR, which mean-reverts within days, the TED spread exhibits sustained multi-month trends (e.g., widening from 20 bp to over 450 bp during the 2007--2009 crisis and remaining elevated for quarters). All three funding variables are jointly significant in the multivariate Granger test: $\Delta$Reserves ($F = 3.04$, $p < 0.0001$), $\Delta$TGA ($F = 1.83$, $p = 0.0001$), and TED spread ($F = 1.82$, $p = 0.0001$). This contrasts sharply with the post-2018 VAR A, where SOFR--EFFR was entirely insignificant ($F = 0.87$, $p = 0.758$).
+
+## Impulse Response Functions
+
+```{r irf_panel_ted, fig.cap="Orthogonalized Impulse Response Functions --- TED Spread VAR (2003--2022). Each panel shows the response of a credit spread measure to a one-standard-deviation Cholesky shock to a funding variable. Shaded areas: 95\\% bootstrap confidence intervals (500 replications).", fig.height=7}
+knitr::include_graphics(file.path(WD, "output", "figures", "fig_irf_panel_ted.pdf"))
+```
+
+The TED spread IRFs reveal a qualitatively different transmission pattern:
+
+**TED spread shocks produce persistent credit spread responses.** A one-standard-deviation positive shock to the TED spread generates a positive response in $\Delta$Baa over the first 5--10 business days, with confidence bands that largely exclude zero. The magnitude is economically meaningful: the point estimate suggests a cumulative Baa spread widening of several basis points in response to a TED shock. The $\Delta$Aaa response is qualitatively similar but somewhat smaller, consistent with higher-grade credit being less sensitive to bank funding stress.
+
+**Reserve and TGA channels remain operative.** The quantity channel IRFs in the TED VAR are qualitatively similar to the SOFR specifications, with reserve shocks producing the expected oscillating response in Aaa spreads. The narrower confidence bands (relative to VAR A) reflect the much larger sample.
+
+## Forecast Error Variance Decomposition
+
+```{r fevd_ted_table}
+fevd_ted <- data.frame(
+  Response = c(rep("$\\Delta$Aaa", 5), rep("$\\Delta$Baa", 5)),
+  Horizon = rep(c(1, 5, 10, 20, 30), 2),
+  TGA = c(0.0, 0.1, 0.2, 0.5, 0.5, 0.0, 0.1, 0.2, 0.4, 0.5),
+  Reserves = c(0.1, 0.3, 0.5, 0.8, 0.8, 0.0, 0.1, 0.2, 0.4, 0.4),
+  TED = c(0.9, 1.1, 1.2, 1.3, 1.3, 1.3, 2.1, 2.5, 3.7, 3.8),
+  Own = c(99.0, 97.1, 96.0, 94.5, 94.4, 46.1, 45.7, 45.6, 44.6, 44.5),
+  Cross = c(0.0, 1.4, 2.2, 2.9, 2.9, 52.5, 51.9, 51.5, 51.0, 50.9),
+  stringsAsFactors = FALSE
+)
+
+kable(fevd_ted, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Forecast Error Variance Decomposition (TED Spread VAR D, 2003--2022)",
+      col.names = c("Response", "$h$", "$\\Delta$TGA", "$\\Delta$Res.",
+                     "TED", "Own", "Cross-credit"),
+      digits = 1, align = c("l", "c", "c", "c", "c", "c", "c")) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 9) %>%
+  add_header_above(c(" " = 2, "Funding shocks (\\\\%)" = 3,
+                      "Credit shocks (\\\\%)" = 2), escape = FALSE) %>%
+  footnote(general = "Values are percentages of forecast error variance at each horizon.",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+```{r fevd_ted_plot, fig.cap="Forecast Error Variance Decomposition (TED VAR D, 2003--2022). TED spread shocks explain 3.8\\% of d\\_Baa variance at h=30, compared to 0.3\\% for SOFR--EFFR in the post-2018 VAR.", fig.height=3.5}
+knitr::include_graphics(file.path(WD, "output", "figures", "fig_fevd_ted.pdf"))
+```
+
+The TED FEVD reveals a dramatically stronger price channel:
+
+1. **TED explains 3.8\% of $\Delta$Baa variance at $h = 30$**---nearly 13 times the SOFR--EFFR contribution in the post-2018 VAR (0.3\%) and more than double the extended-sample SOFR contribution (1.7\%). Among the three funding variables, TED is by far the largest contributor to Baa spread variation.
+
+2. **TED explains 1.3\% of $\Delta$Aaa variance at $h = 30$**, also exceeding the SOFR--EFFR contribution in both VARs A and C. The Baa--Aaa differential (3.8\% vs. 1.3\%) is consistent with the TED spread's credit-risk component transmitting more strongly to lower-grade credit.
+
+3. **Cross-credit transmission reverses direction.** In the TED VAR, Aaa shocks explain approximately 51\% of Baa variance (versus 63\% in the post-2018 VAR), while Baa's own shock contribution rises to 44.5\% (versus 35.3\%). This shift suggests that in the pre-cessation sample, Baa spreads were somewhat more autonomous---less mechanically driven by Aaa---likely because the TED spread provided an independent credit-risk signal that was partly redundant with the Aaa-to-Baa hierarchy.
+
+## Interpretation: Funding vs. Credit Risk
+
+The TED spread's superior explanatory power requires careful interpretation. Two non-exclusive mechanisms explain the result:
+
+**First, the pure funding channel is stronger when it varies.** SOFR--EFFR is near-zero for 85\% of the post-2018 sample; there is simply no price signal for the VAR to extract. The TED spread, by contrast, exhibits continuous variation throughout its sample (mean = 41 bp, standard deviation = 48 bp), providing statistical power that SOFR--EFFR lacks. To the extent that TED movements reflect genuine funding cost changes for dealer-banks, they should transmit to credit spreads through the Brunnermeier--Pedersen (2009) margin spiral and the Bruno--Shin (2015) dollar funding channel.
+
+**Second, the TED spread contains bank credit risk.** Because LIBOR embeds the credit risk of the panel banks, a TED widening may reflect deteriorating bank health rather than (or in addition to) tighter funding conditions. If bank credit risk and corporate credit risk share common drivers (macro deterioration, financial contagion), then the TED-to-credit-spread relationship is partly mechanical---a shared exposure to credit risk rather than a causal funding channel. This caveat is important: the TED VAR provides an *upper bound* on price-channel transmission, while the SOFR--EFFR VAR provides a *lower bound* (since SOFR is a secured rate that strips out bank credit risk).
+
+The truth likely lies between these bounds. The fact that TED's explanatory power for $\Delta$Baa (3.8\%) exceeds its power for $\Delta$Aaa (1.3\%) is consistent with credit-risk contamination, since lower-grade spreads should be more sensitive to bank credit conditions. But the TED spread also Granger-causes credit spreads with very high significance ($F = 1.82$, $p = 0.0001$ in the multivariate framework), suggesting genuine predictive content beyond mere contemporaneous correlation.
+
+# Robustness: Cholesky Ordering Sensitivity
+
+```{r ordering_robustness, fig.cap="Robustness to Cholesky ordering: Response of d\\_Aaa to a d\\_Reserves shock under two alternative orderings. The point estimates track each other closely, confirming that the results are not driven by the ordering assumption.", fig.height=3.5}
+knitr::include_graphics(file.path(WD, "output", "figures", "fig_irf_ordering_robustness.pdf"))
+```
+
+To verify that the results are not artifacts of the Cholesky ordering, we re-estimate the post-2018 VAR with $\Delta$Reserves ordered before $\Delta$TGA (rather than after). Figure 5 shows that the impulse response of $\Delta$Aaa to a $\Delta$Reserves shock is virtually identical under both orderings. The point estimates track each other closely throughout the 30-day horizon, confirming that the ordering between TGA and Reserves---the two quantity variables whose relative exogeneity is most debatable---has negligible impact on the structural impulse responses.
+
+# Summary and Implications
+
+The VAR analysis across four specifications confirms the architecture of funding-to-credit transmission identified in the Granger tests while quantifying its economic magnitude and revealing important structural variation across samples and funding measures:
+
+1. **The quantity channel dominates the price channel** in the post-2018 period. Reserve shocks explain roughly five times more credit spread variance than SOFR--EFFR shocks. This is consistent with abundant reserves compressing the price signal while the quantity/collateral mechanism remains operative.
+
+2. **The overall magnitude is modest** in unconditional terms. Funding variables collectively explain 2--3\% of credit spread forecast error variance at the 30-day horizon in the post-2018 sample. This is an honest finding that reflects the episodic nature of the transmission channel and the noise inherent in daily data.
+
+3. **The extended sample and TED VAR reveal the dormant price channel.** When the sample includes the pre-2018 period, the funding price variable's contribution to Baa variance increases substantially: from 0.3\% (SOFR--EFFR, post-2018) to 1.7\% (SOFR proxy, extended) to 3.8\% (TED spread, 2003--2022). This progression confirms that the price channel is structurally present but regime-dependent, and that its measured strength depends on the funding variable's information content.
+
+4. **The TED spread provides an upper bound on price-channel transmission.** Its 3.8\% contribution to $\Delta$Baa variance---13 times the post-2018 SOFR result---reflects both genuine funding transmission and shared credit-risk exposure via LIBOR. The SOFR--EFFR VAR provides a complementary lower bound, with the true effect likely between the two.
+
+5. **Credit-to-credit transmission is the dominant channel** across all specifications. Aaa shocks explain 51--63\% of Baa variance, dwarfing all funding contributions. This suggests that funding-to-credit transmission operates primarily through the Aaa ``entry point'' before propagating down the quality spectrum---a collateral-hierarchy mechanism consistent with Adrian, Boyarchenko, and Shachar (2017).
+
+These findings motivate the regime-dependent analysis in Section 5.5, which splits the sample into stress and calm episodes to isolate the concentrated, episodic effects that the unconditional VAR averages away.
+
+\newpage
+
+# References
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+Adrian, T., Boyarchenko, N., and Shachar, O. (2017). Dealer balance sheets and bond liquidity provision. *Journal of Monetary Economics*, 89, 92--109.
+
+Brunnermeier, M. K. and Pedersen, L. H. (2009). Market liquidity and funding liquidity. *Review of Financial Studies*, 22(6), 2201--2238.
+
+Bruno, V. and Shin, H. S. (2015). Cross-border banking and global liquidity. *Review of Economic Studies*, 82(2), 535--564.
+
+L\"{u}tkepohl, H. (2005). *New Introduction to Multiple Time Series Analysis*. Springer, Berlin.
+
+Sims, C. A. (1980). Macroeconomics and reality. *Econometrica*, 48(1), 1--48.

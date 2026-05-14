@@ -1,0 +1,34 @@
+% latex table generated in R 4.3.2 by xtable 1.8-4 package
+% Mon May 11 22:07:33 2026
+\begin{table}[htbp]
+\centering
+\caption{Data Sources and Variable Descriptions} 
+\label{tab:data_sources}
+\scalebox{0.72}{
+\begin{tabular}{llccl}
+  \toprule
+Variable & Source & Frequency & Available & Role \\ 
+  \midrule
+SOFR\textendash{}EFFR spread & FRBNY; FRED (SOFR, EFFR) & Daily & Apr 2018\textendash{}Apr 2026 & Funding input (price) \\ 
+  GC Repo\textendash{}EFFR spread (proxy) & FRBNY Primary Dealer Survey & Daily & May 2003\textendash{}Feb 2018 & Funding input (proxy) \\ 
+  TED spread & FRED (TEDRATE) & Daily & May 2003\textendash{}Jan 2022 & Funding input (robustness) \\ 
+  Moody's Baa corporate spread & FRED (BAA10Y) & Daily & May 2003\textendash{}Apr 2026 & Credit output \\ 
+  Moody's Aaa corporate spread & FRED (AAA10Y) & Daily & May 2003\textendash{}Apr 2026 & Credit output \\ 
+  Baa\textendash{}Aaa quality differential & Constructed & Daily & May 2003\textendash{}Apr 2026 & Credit output (collateral) \\ 
+  Reserve balances at Fed & FRED (WRESBAL) & Weekly (Wed) & May 2003\textendash{}Apr 2026 & Funding input (quantity) \\ 
+  TGA balance & FRED (WTREGEN) & Weekly (Wed) & May 2003\textendash{}Apr 2026 & Funding input (exogenous) \\ 
+  Total assets (Fed) & FRED (WALCL) & Weekly (Wed) & May 2003\textendash{}Apr 2026 & Funding input (quantity) \\ 
+  ON Reverse Repo operations & FRED (RRPONTSYD) & Daily & May 2003\textendash{}Apr 2026 & Funding input (quantity) \\ 
+  Fed dollar liquidity swaps & FRED (SWPT) & Weekly (Wed) & May 2003\textendash{}Apr 2026 & Descriptive only \\ 
+  DXY index & FRED (DTWEXBGS) & Daily & Jan 2006\textendash{}Apr 2026 & Risk appetite / global \\ 
+  HYG (iShares High Yield ETF) & Bloomberg & Daily & Apr 2007\textendash{}Apr 2026 & Risk appetite extension \\ 
+  LQD (iShares IG Corporate ETF) & Bloomberg & Daily & Jan 2005\textendash{}Apr 2026 & Risk appetite extension \\ 
+  SHV (iShares Short Treasury ETF) & Bloomberg & Daily & Jan 2007\textendash{}Apr 2026 & Risk appetite extension \\ 
+  HYG/SHV ratio & Constructed & Daily & Apr 2007\textendash{}Apr 2026 & Risk appetite extension \\ 
+  EMB (iShares EM Bond ETF) & Bloomberg & Daily & Dec 2007\textendash{}Apr 2026 & EM transmission \\ 
+  MOVE index & Bloomberg & Daily & Mar 2021\textendash{}Apr 2026 & Validation \\ 
+  Cross-currency basis (3M) & Bloomberg & Daily & May 2024\textendash{}May 2026 & Descriptive (post-2024) \\ 
+   \bottomrule
+\end{tabular}
+}
+\end{table}

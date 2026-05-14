@@ -1,0 +1,425 @@
+---
+title: "Section 5.3 --- Granger Causality Tests"
+subtitle: "The Plumbing of Liquidity: How Funding Conditions Transmit to Credit Spreads"
+author: "Jordi Camps Triay"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    latex_engine: pdflatex
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    keep_tex: false
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage{array}
+  - \usepackage{multirow}
+  - \usepackage{float}
+  - \usepackage{caption}
+  - \usepackage{amsmath}
+  - \usepackage{geometry}
+  - \geometry{margin=1in}
+  - \usepackage{setspace}
+  - \onehalfspacing
+  - \captionsetup[table]{skip=8pt}
+  - \usepackage{pdflscape}
+  - \usepackage{tabularx}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, warning = FALSE, message = FALSE,
+  fig.align = "center", fig.width = 6.5, fig.height = 4,
+  out.width = "95%"
+)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(scales)
+
+WD <- normalizePath(file.path(dirname(knitr::current_input(dir = TRUE)), ".."))
+knitr::opts_knit$set(root.dir = WD)
+
+# Load results
+res <- read_csv(file.path(WD, "output", "granger_all_results.csv"), show_col_types = FALSE)
+df  <- read_csv(file.path(WD, "data_master.csv"), show_col_types = FALSE)
+df$Date <- as.Date(df$Date)
+```
+
+\newpage
+
+# Introduction
+
+This section presents the Granger causality tests that constitute the first inferential step of the empirical analysis. Before estimating the full VAR system (Section 5.4), we establish which funding variables contain predictive information for credit spread dynamics. The Granger framework provides a rigorous, model-free diagnostic of lead--lag structure that disciplines the subsequent multivariate specification.
+
+The test results reported below are organized into six batteries, progressively widening the scope from the core post-2018 sample to the extended 2003--2026 sample, the TED spread robustness specification, and the risk appetite extension. We test at three lag orders --- 1, 5, and 10 business days --- to capture both immediate and slower transmission channels.
+
+
+# Methodology
+
+## The Granger Causality Test
+
+Granger (1969) proposed that a variable $X$ is said to "Granger-cause" $Y$ if past values of $X$ contain information that helps predict $Y$ beyond $Y$'s own history. Formally, we estimate:
+
+\begin{align}
+\text{Restricted:} \quad Y_t &= \alpha_0 + \sum_{j=1}^{p} \alpha_j Y_{t-j} + \varepsilon_t \label{eq:restricted} \\[6pt]
+\text{Unrestricted:} \quad Y_t &= \alpha_0 + \sum_{j=1}^{p} \alpha_j Y_{t-j} + \sum_{j=1}^{p} \beta_j X_{t-j} + u_t \label{eq:unrestricted}
+\end{align}
+
+The null hypothesis $H_0: \beta_1 = \beta_2 = \cdots = \beta_p = 0$ is tested via an $F$-statistic on the joint restriction. Rejection indicates that lagged $X$ has statistically significant predictive content for $Y$ after controlling for $Y$'s own dynamics. This is a necessary condition for the transmission mechanism postulated in the theoretical framework: if funding conditions transmit to credit spreads, lagged funding variables must contain information not already embedded in credit spread history.
+
+It is important to emphasize that Granger causality establishes *predictive precedence*, not structural causation. The test identifies lead--lag relationships in the data that are consistent with---but do not prove---the theoretical channels discussed in Chapter 3. Structural identification requires the Cholesky decomposition of the VAR system (Section 5.4).
+
+## Lag Selection
+
+We test at $p \in \{1, 5, 10\}$ business days. Lag 1 captures overnight transmission. Lag 5 corresponds to one trading week, reflecting the typical settlement and rebalancing horizon in repo markets (Copeland, Martin, and Walker, 2014). Lag 10 (two trading weeks) captures slower portfolio adjustment effects and allows for the lagged publication of weekly data (Fed H.4.1 balance sheet releases). All variables enter the tests in their stationary transformations as established in Section 5.2: SOFR--EFFR and TED spread in levels, credit spreads and balance sheet quantities in first differences.
+
+## Sample Definitions
+
+```{r samples}
+df_post     <- df %>% filter(Date >= as.Date("2018-04-02"))
+df_extended <- df %>% filter(Date >= as.Date("2003-05-01"))
+df_ted      <- df %>% filter(Date >= as.Date("2003-05-01"),
+                              Date <= as.Date("2022-01-21"))
+
+samples_tbl <- data.frame(
+  Sample = c("Post-2018 (primary)", "Extended (with SOFR proxy)",
+             "TED spread (robustness)"),
+  Period = c("April 2018 -- May 2026", "May 2003 -- May 2026",
+             "May 2003 -- January 2022"),
+  N = c(nrow(df_post), nrow(df_extended), nrow(df_ted)),
+  Rationale = c("Actual SOFR available; post-reform market structure",
+                "ON Treasury GC Repo Rate as SOFR proxy (Fed FEDS Notes, 2019)",
+                "TED spread available until LIBOR cessation")
+)
+
+kable(samples_tbl, booktabs = TRUE, longtable = FALSE,
+      caption = "Sample Periods for Granger Causality Tests",
+      col.names = c("Sample", "Period", "Obs.", "Rationale"),
+      align = c("l", "l", "r", "l")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"),
+                font_size = 9) %>%
+  column_spec(4, width = "6cm")
+```
+
+
+# Post-2018 Results: The Core Sample
+
+The post-2018 sample provides the cleanest testing ground: actual SOFR data, a stable post-reform market structure, and ample reserves throughout most of the period. We organize the results into three batteries: funding price (SOFR--EFFR), funding quantities ($\Delta$Reserves, $\Delta$TGA, $\Delta$ON RRP), and reverse causality checks.
+
+## Battery 1: Funding Price Channel (SOFR--EFFR $\rightarrow$ Credit)
+
+```{r battery1}
+b1 <- res %>% filter(Battery == "1: Price -> Credit (Post-2018)") %>%
+  mutate(Direction = paste0("SOFR--EFFR $\\rightarrow$ $\\Delta$",
+                            gsub("d_", "", Y))) %>%
+  select(Direction, Lag, N, F_stat, p_value, Sig)
+
+kable(b1, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Battery 1: SOFR--EFFR $\\rightarrow$ Credit Spread Changes (Post-2018)",
+      col.names = c("Direction", "Lag", "$N$", "$F$-stat", "$p$-value", ""),
+      digits = c(0, 0, 0, 3, 4, 0),
+      align = c("l", "c", "c", "c", "c", "l")) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 9) %>%
+  footnote(general = "Significance: *** p<0.01, ** p<0.05, * p<0.10",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+The SOFR--EFFR spread fails to Granger-cause any credit spread measure at any lag order. The $F$-statistics are uniformly small (all below 2.52), and $p$-values are far from conventional significance thresholds. The closest approach is SOFR--EFFR $\rightarrow$ $\Delta$(Baa--Aaa) at lag 1 ($F = 2.51$, $p = 0.113$), but this does not reach the 10\% level.
+
+This null result is not surprising given the distributional properties of SOFR--EFFR documented in Section 5.2. With a skewness of 22.5 and the spread compressed at or near zero on approximately 88\% of trading days, the Granger test---which relies on linear conditional expectations---has virtually no statistical power to detect a relationship that is fundamentally nonlinear. The transmission mechanism is episodic: SOFR--EFFR spikes only during acute funding stress (quarter-ends, the September 2019 repo crisis), and these events are too rare and too brief to register in a linear predictive regression over the full post-2018 period. This motivates the regime-dependent analysis in Section 5.5.
+
+## Battery 2: Funding Quantity Channel (Balance Sheet $\rightarrow$ Credit)
+
+```{r battery2}
+b2 <- res %>% filter(Battery == "2: Quantity -> Credit (Post-2018)") %>%
+  mutate(Direction = paste0("$\\Delta$", X_clean = gsub("d_", "", X),
+                            " $\\rightarrow$ $\\Delta$",
+                            gsub("d_", "", Y))) %>%
+  select(Direction, Lag, N, F_stat, p_value, Sig)
+
+# Fix the direction column properly
+b2 <- res %>% filter(Battery == "2: Quantity -> Credit (Post-2018)") %>%
+  mutate(
+    X_label = case_when(
+      X == "d_Reserves" ~ "$\\Delta$Reserves",
+      X == "d_TGA"      ~ "$\\Delta$TGA",
+      X == "d_ON_RRP"   ~ "$\\Delta$ON\\_RRP",
+      TRUE ~ X),
+    Y_label = case_when(
+      Y == "d_Baa"     ~ "$\\Delta$Baa",
+      Y == "d_Aaa"     ~ "$\\Delta$Aaa",
+      Y == "d_Baa_Aaa" ~ "$\\Delta$(Baa--Aaa)",
+      TRUE ~ Y),
+    Direction = paste0(X_label, " $\\rightarrow$ ", Y_label)
+  ) %>%
+  select(Direction, Lag, N, F_stat, p_value, Sig)
+
+kable(b2, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Battery 2: Funding Quantities $\\rightarrow$ Credit Spread Changes (Post-2018)",
+      col.names = c("Direction", "Lag", "$N$", "$F$-stat", "$p$-value", ""),
+      digits = c(0, 0, 0, 3, 4, 0),
+      align = c("l", "c", "c", "c", "c", "l")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 8) %>%
+  footnote(general = "Significance: *** p<0.01, ** p<0.05, * p<0.10",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+The quantity channel yields the sharpest results. Three findings stand out:
+
+**Reserve changes predict Aaa spread changes at all lags.** $\Delta$Reserves $\rightarrow$ $\Delta$Aaa is significant at the 1\% level for lags 1 and 5 ($F = 6.83$, $p = 0.009$; $F = 3.49$, $p = 0.004$) and at the 5\% level for lag 10 ($F = 2.22$, $p = 0.015$). This is the strongest and most persistent relationship in the post-2018 sample.
+
+**Reserve changes do \textit{not} predict Baa spread changes.** $\Delta$Reserves $\rightarrow$ $\Delta$Baa is insignificant at all lags ($p = 0.18$, $0.15$, $0.12$). This asymmetry---reserves predict Aaa but not Baa---is economically meaningful. Aaa-rated bonds are closer substitutes for Treasuries in repo collateral and are therefore more sensitive to changes in aggregate reserve balances. When reserves drain, the collateral value of high-grade bonds adjusts first, widening Aaa spreads before the effect transmits to lower-rated securities. This pattern is consistent with the collateral channel described by Adrian, Boyarchenko, and Shachar (2017).
+
+**TGA changes predict the Baa--Aaa quality differential.** $\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa) is significant at lags 5 and 10 ($F = 3.74$, $p = 0.002$; $F = 2.51$, $p = 0.005$). Treasury General Account drawdowns inject reserves into the banking system, compressing the quality differential as high-grade funding conditions ease disproportionately. The significance at multi-day lags but not at lag 1 suggests a slow, policy-transmission mechanism consistent with the fiscal plumbing channel described by Duffie and Krishnamurthy (2016).
+
+**ON RRP shows no predictive power.** $\Delta$ON RRP fails to Granger-cause any credit spread measure ($p > 0.26$ everywhere). This is consistent with the ON RRP facility acting as a liquidity absorption tool for money market funds, a sector largely disconnected from corporate credit markets.
+
+
+## Battery 3: Reverse Causality Checks
+
+```{r battery3}
+b3 <- res %>% filter(Battery == "3: Reverse Causality (Post-2018)") %>%
+  mutate(
+    X_label = case_when(
+      X == "d_Baa" ~ "$\\Delta$Baa",
+      X == "d_Aaa" ~ "$\\Delta$Aaa",
+      TRUE ~ X),
+    Y_label = case_when(
+      Y == "SOFR_EFFR"  ~ "SOFR--EFFR",
+      Y == "d_Reserves"  ~ "$\\Delta$Reserves",
+      Y == "d_TGA"       ~ "$\\Delta$TGA",
+      TRUE ~ Y),
+    Direction = paste0(X_label, " $\\rightarrow$ ", Y_label)
+  ) %>%
+  select(Direction, Lag, N, F_stat, p_value, Sig)
+
+kable(b3, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Battery 3: Reverse Causality --- Credit $\\rightarrow$ Funding (Post-2018)",
+      col.names = c("Direction", "Lag", "$N$", "$F$-stat", "$p$-value", ""),
+      digits = c(0, 0, 0, 3, 4, 0),
+      align = c("l", "c", "c", "c", "c", "l")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 9) %>%
+  footnote(general = "Significance: *** p<0.01, ** p<0.05, * p<0.10",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+The reverse causality tests reveal a critical asymmetry. Credit spread changes do *not* Granger-cause the SOFR--EFFR spread at any lag ($p > 0.68$ uniformly for both $\Delta$Baa and $\Delta$Aaa). This confirms the exogeneity of the funding price to the credit market in the post-2018 period: SOFR--EFFR is determined by money market conditions (reserve supply, dealer balance sheet constraints) rather than by credit spread dynamics.
+
+However, credit spread changes *do* Granger-cause reserve and TGA changes at longer lags. $\Delta$Baa and $\Delta$Aaa both predict $\Delta$Reserves at lags 5 and 10 (all $p < 0.004$), and $\Delta$Aaa predicts $\Delta$TGA at all lags ($p = 0.008$, $0.012$, $0.001$). This bidirectional relationship likely reflects two mechanisms. First, the Federal Reserve's reaction function: credit market stress at the 5--10 day horizon may prompt adjustments to reserve management operations. Second, common exposure to macroeconomic news that affects both credit risk perceptions and fiscal/monetary policy variables with differential lags.
+
+The presence of reverse causality for quantity variables (but not for SOFR--EFFR) has important implications for the VAR ordering in Section 5.4. Specifically, Cholesky identification will place SOFR--EFFR before credit spreads (justified by its exogeneity), while the reserves--credit relationship will be modeled as a simultaneous system where both directions of causation are allowed.
+
+
+# Extended Sample Results (2003--2026)
+
+```{r battery4}
+b4 <- res %>% filter(Battery == "4: Extended Sample (2003-2026)") %>%
+  mutate(
+    X_label = case_when(
+      X == "SOFR_EFFR"  ~ "SOFR--EFFR (proxy)",
+      X == "d_Reserves"  ~ "$\\Delta$Reserves",
+      X == "d_TGA"       ~ "$\\Delta$TGA",
+      X == "d_Baa"       ~ "$\\Delta$Baa",
+      X == "d_Aaa"       ~ "$\\Delta$Aaa",
+      TRUE ~ X),
+    Y_label = case_when(
+      Y == "d_Baa"      ~ "$\\Delta$Baa",
+      Y == "d_Aaa"      ~ "$\\Delta$Aaa",
+      Y == "d_Baa_Aaa"  ~ "$\\Delta$(Baa--Aaa)",
+      Y == "SOFR_EFFR"  ~ "SOFR--EFFR (proxy)",
+      TRUE ~ Y),
+    Direction = paste0(X_label, " $\\rightarrow$ ", Y_label)
+  ) %>%
+  select(Direction, Lag, N, F_stat, p_value, Sig)
+
+kable(b4, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Battery 4: Extended Sample with SOFR Proxy (2003--2026)",
+      col.names = c("Direction", "Lag", "$N$", "$F$-stat", "$p$-value", ""),
+      digits = c(0, 0, 0, 3, 4, 0),
+      align = c("l", "c", "c", "c", "c", "l")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 8) %>%
+  footnote(general = "SOFR proxy: ON Treasury GC Repo Rate (pre-April 2018). Significance: *** p<0.01, ** p<0.05, * p<0.10",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+Extending the sample to 2003 using the Federal Reserve's ON Treasury GC Repo Rate as a historical SOFR proxy (see Bowman, Lobell, and Marquardt, 2019) dramatically changes the price-channel results. Three patterns emerge:
+
+**The SOFR--EFFR proxy strongly predicts Baa and Baa--Aaa changes.** SOFR--EFFR (proxy) $\rightarrow$ $\Delta$Baa is highly significant at all lags ($F = 16.95$, $6.67$, $4.50$; all $p < 0.0001$), as is the effect on the quality differential ($F = 37.46$, $11.41$, $7.14$; all $p < 0.0001$). These are among the largest $F$-statistics in the entire analysis.
+
+**The SOFR--EFFR proxy does \textit{not} predict Aaa changes.** Despite its power for Baa and the quality differential, the proxy fails to predict $\Delta$Aaa ($p = 0.46$, $0.24$, $0.15$). Combined with the reserve-channel results, this confirms that funding price and funding quantity transmit to credit through different channels: the price channel operates on lower-grade (Baa) spreads where credit risk is more directly linked to funding costs, while the quantity/collateral channel operates on high-grade (Aaa) spreads.
+
+**Bidirectional causality exists in the extended sample.** Both $\Delta$Baa and $\Delta$Aaa strongly predict the SOFR--EFFR proxy ($F = 22.00$ and $7.57$ at lag 1, respectively). This bidirectional relationship was absent in the post-2018 sample. The extended sample includes the Global Financial Crisis (2007--2009) and the European debt crisis (2011--2012), episodes where the Brunnermeier and Pedersen (2009) margin spiral was active: rising credit spreads impaired collateral values, which tightened repo funding, which further widened spreads. The absence of this spiral in the post-2018 period reflects the structural shift toward abundant reserves.
+
+The extended-sample quantity results confirm the post-2018 findings: $\Delta$Reserves continues to predict $\Delta$(Baa--Aaa) at all lags, and $\Delta$TGA predicts the quality differential at lags 5 and 10 with stronger significance ($p = 0.003$ and $0.010$, respectively).
+
+
+# TED Spread Robustness (2003--2022)
+
+```{r battery5}
+b5 <- res %>% filter(Battery == "5: TED Spread (2003-2022)") %>%
+  mutate(
+    X_label = case_when(
+      X == "TED_spread" ~ "TED spread",
+      X == "d_Baa"      ~ "$\\Delta$Baa",
+      X == "d_Aaa"      ~ "$\\Delta$Aaa",
+      TRUE ~ X),
+    Y_label = case_when(
+      Y == "d_Baa"      ~ "$\\Delta$Baa",
+      Y == "d_Aaa"      ~ "$\\Delta$Aaa",
+      Y == "d_Baa_Aaa"  ~ "$\\Delta$(Baa--Aaa)",
+      Y == "TED_spread" ~ "TED spread",
+      TRUE ~ Y),
+    Direction = paste0(X_label, " $\\rightarrow$ ", Y_label)
+  ) %>%
+  select(Direction, Lag, N, F_stat, p_value, Sig)
+
+kable(b5, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Battery 5: TED Spread Robustness (2003--2022)",
+      col.names = c("Direction", "Lag", "$N$", "$F$-stat", "$p$-value", ""),
+      digits = c(0, 0, 0, 3, 4, 0),
+      align = c("l", "c", "c", "c", "c", "l")) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 9) %>%
+  footnote(general = "TED spread = 3-month LIBOR minus 3-month T-bill rate. Available through January 2022 (LIBOR cessation). Significance: *** p<0.01, ** p<0.05, * p<0.10",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+The TED spread produces the strongest Granger causality results of any funding variable. TED $\rightarrow$ $\Delta$Baa is significant at all lags with $F = 57.90$ at lag 1 ($p < 0.0001$). The effect on the quality differential is even stronger: TED $\rightarrow$ $\Delta$(Baa--Aaa) achieves $F = 102.88$ at lag 1, the largest test statistic in the entire analysis.
+
+These results require careful interpretation. The TED spread combines the secured/unsecured funding differential (the focus of this thesis) with the interbank credit risk premium embedded in LIBOR. The latter component correlates mechanically with corporate credit spreads through shared credit-risk exposure. Consequently, the TED spread's predictive power for credit spreads is likely *inflated* by common credit-risk variation rather than reflecting a pure funding transmission channel. This is precisely why the SOFR--EFFR spread serves as the primary specification: by differencing two secured/unsecured overnight rates, it isolates the funding convenience yield from credit risk contamination.
+
+The reverse causality results for TED are also informative. Credit changes do not predict TED at lag 1 ($p = 0.14$ for $\Delta$Baa, $p = 0.70$ for $\Delta$Aaa), but become significant at lags 5 and 10 (all $p < 0.001$). This is consistent with the GFC-era Brunnermeier--Pedersen spiral operating at weekly and biweekly frequencies, but not overnight. The delayed feedback loop reflects the time required for collateral haircut adjustments and margin calls to propagate from credit markets back to interbank funding.
+
+
+# Risk Appetite Extension (Post-2018)
+
+```{r battery6}
+b6 <- res %>% filter(Battery == "6: Risk Appetite (Post-2018)") %>%
+  mutate(
+    X_label = case_when(
+      X == "SOFR_EFFR"  ~ "SOFR--EFFR",
+      X == "d_Reserves"  ~ "$\\Delta$Reserves",
+      X == "d_TGA"       ~ "$\\Delta$TGA",
+      TRUE ~ X),
+    Y_label = case_when(
+      Y == "d_log_HYG_LQD" ~ "$\\Delta$log(HYG/LQD)",
+      Y == "lr_DXY"         ~ "DXY log-return",
+      Y == "lr_EMB"         ~ "EMB log-return",
+      TRUE ~ Y),
+    Direction = paste0(X_label, " $\\rightarrow$ ", Y_label)
+  ) %>%
+  select(Direction, Lag, N, F_stat, p_value, Sig)
+
+kable(b6, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Battery 6: Funding $\\rightarrow$ Risk Appetite (Post-2018)",
+      col.names = c("Direction", "Lag", "$N$", "$F$-stat", "$p$-value", ""),
+      digits = c(0, 0, 0, 3, 4, 0),
+      align = c("l", "c", "c", "c", "c", "l")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 9) %>%
+  footnote(general = "HYG/LQD ratio proxies for risk appetite in credit. DXY captures dollar funding spillovers. EMB proxies for EM sovereign credit conditions. Significance: *** p<0.01, ** p<0.05, * p<0.10",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+The risk appetite extension tests whether domestic funding conditions predict broader risk-taking proxies, following the global dollar funding channel of Bruno and Shin (2015).
+
+**Reserves predict risk appetite at short horizons.** $\Delta$Reserves $\rightarrow$ $\Delta$log(HYG/LQD) is highly significant at lag 1 ($F = 11.96$, $p = 0.0006$) and marginally significant at lag 5 ($p = 0.065$). When reserves expand, the HYG/LQD ratio rises (investors shift toward high-yield), consistent with a portfolio rebalancing channel operating through dealer balance sheet capacity.
+
+**Reserves strongly predict dollar returns.** $\Delta$Reserves $\rightarrow$ DXY log-returns is significant at all tested lags ($F = 8.75$ at lag 1, $p = 0.003$). This is consistent with the "reserve drain $\rightarrow$ dollar strength" mechanism: when the Fed drains reserves (via quantitative tightening, TGA rebuilding, or reduced lending facilities), dollar funding becomes scarcer, appreciating the dollar. The significance at all lags (1, 5, 10) suggests a persistent transmission channel.
+
+**SOFR--EFFR predicts EM bond returns at lag 1.** Despite its null result for domestic credit spreads, SOFR--EFFR significantly predicts EMB log-returns ($F = 4.47$, $p = 0.035$). This asymmetry suggests that EM sovereign credit markets may be more sensitive to funding price signals than domestic investment-grade markets, possibly because emerging-market debt is more funding-sensitive (higher duration, dollar-denominated, carry-trade linked).
+
+
+# Summary of Results
+
+```{r summary_table}
+summary_df <- data.frame(
+  Battery = c(
+    "1: SOFR--EFFR $\\rightarrow$ Credit (Post-2018)",
+    "2: Quantities $\\rightarrow$ Credit (Post-2018)",
+    "3: Reverse Causality (Post-2018)",
+    "4: Extended Sample (2003--2026)",
+    "5: TED Spread (2003--2022)",
+    "6: Risk Appetite (Post-2018)"
+  ),
+  Tests = c(9, 27, 18, 33, 15, 21),
+  stringsAsFactors = FALSE
+)
+
+# Count sig from actual data
+for (i in 1:6) {
+  bat_name <- unique(res$Battery)[i]
+  sub <- res %>% filter(Battery == bat_name)
+  summary_df$Sig5[i]  <- sum(sub$p_value < 0.05, na.rm = TRUE)
+  summary_df$Sig10[i] <- sum(sub$p_value < 0.10, na.rm = TRUE)
+}
+summary_df$Rate <- paste0(round(100 * summary_df$Sig5 / summary_df$Tests, 0), "\\%")
+
+kable(summary_df, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Summary: Significant Results by Battery",
+      col.names = c("Battery", "Tests", "Sig. at 5\\%", "Sig. at 10\\%", "Rate (5\\%)"),
+      align = c("l", "c", "c", "c", "c")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 9)
+```
+
+
+# Interpretation: Three Channels
+
+The Granger causality results reveal a clear architecture of funding-to-credit transmission organized around three channels.
+
+## The Quantity/Collateral Channel
+
+The dominant post-2018 finding is that reserve changes predict investment-grade (Aaa) spread changes at all tested lags, but do *not* predict speculative-grade (Baa) spread changes. This asymmetry is consistent with the collateral channel described by Adrian, Boyarchenko, and Shachar (2017): reserves affect credit spreads through the repo market's demand for high-quality collateral rather than through a general credit channel. When the Federal Reserve drains reserves (quantitative tightening, declining lending facilities), banks face tighter collateral constraints. Aaa-rated bonds, as the closest substitutes for Treasuries in repo collateral pools, bear the first-order adjustment. Baa-rated bonds, which are less frequently accepted as repo collateral, are insulated from the direct collateral effect.
+
+The TGA channel reinforces this interpretation. Treasury General Account drawdowns inject reserves (expanding the balance sheet's liability side) and simultaneously reduce Treasury supply (contracting net issuance). Both effects compress the quality differential: the reserve injection eases high-grade funding, while reduced Treasury supply shifts collateral demand toward Aaa corporate bonds. The significance of $\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa) at lags 5 and 10 but not at lag 1 is consistent with the slow transmission of fiscal cash-flow effects through the banking system, as the immediate reserve injection must propagate through money market reallocation before reaching corporate bond markets.
+
+## The Price Channel and Its Nonlinearity
+
+The SOFR--EFFR spread shows zero linear predictive power for any domestic credit spread measure in the post-2018 sample. However, the same variable---extended backward using the Fed's historical proxy---produces the strongest Granger causality results in the full-sample analysis ($F = 37.46$ for the Baa--Aaa differential at lag 1). This apparent contradiction resolves once we recognize the fundamental nonlinearity of the price channel.
+
+In the post-2018 period, SOFR--EFFR is compressed at or near zero on approximately 88\% of trading days (skewness = 22.5, as documented in Section 5.2). The Granger test, which fits a linear predictive regression, has essentially no statistical power against such a distribution: the independent variable has near-zero variance on most days, with occasional extreme spikes that are too few to drive the linear coefficient. The extended sample, which includes the pre-2018 period when the GC repo--EFFR spread varied continuously (the pre-reform money market structure operated with lower reserve levels and more frequent funding dislocations), provides sufficient price variation for the linear test to detect the relationship.
+
+This finding has a direct methodological implication: a linear VAR on the post-2018 sample will likely understate the price channel's importance. Section 5.5 addresses this through regime-dependent analysis, splitting the sample into stress episodes (when SOFR--EFFR departs from zero) and calm periods (when it does not). The hypothesis is that the price channel activates only during stress episodes, where it may have substantial economic magnitude even though its unconditional linear effect is negligible.
+
+## The TGA Identification Advantage
+
+The reverse causality tests reveal that credit spread changes do not Granger-cause SOFR--EFFR (confirming its exogeneity), but they do predict reserve and TGA changes at longer lags. This bidirectional relationship complicates the causal interpretation of the quantity channel: if credit stress predicts future reserve changes, the observed $\Delta$Reserves $\rightarrow$ $\Delta$Aaa relationship might partly reflect the Federal Reserve's endogenous policy response rather than a pure funding transmission channel.
+
+However, the TGA provides a partial resolution. Treasury General Account fluctuations are driven primarily by fiscal cash flows---tax collections, debt issuance schedules, and Congressional spending authorizations---that are plausibly exogenous to daily credit spread movements. While the reverse causality tests show some statistical feedback from $\Delta$Aaa to $\Delta$TGA, this likely reflects common macroeconomic exposure (e.g., an economic slowdown simultaneously widens Aaa spreads and reduces tax receipts) rather than a direct causal link from credit markets to Treasury cash management. In the VAR analysis (Section 5.4), the TGA serves as a partially exogenous instrument that helps identify the direction of the funding--credit transmission.
+
+
+# Implications for the VAR Specification
+
+The Granger causality results provide four direct inputs for the VAR estimation in Section 5.4:
+
+1. **Variable selection:** $\Delta$Reserves and $\Delta$TGA enter the VAR as key quantity variables. ON RRP is excluded given its consistent insignificance. SOFR--EFFR enters as the price variable despite its post-2018 null result, because the extended-sample evidence confirms its structural importance and the regime-dependent analysis will address its nonlinearity.
+
+2. **Cholesky ordering:** SOFR--EFFR is ordered before credit spreads, justified by the absence of reverse causality. $\Delta$Reserves is treated as part of the endogenous system, reflecting bidirectional causality at longer lags.
+
+3. **Lag selection:** The significance patterns across 1, 5, and 10-day lags suggest that information criteria (AIC/BIC) should be used to formally select the VAR lag order, with the expectation that 5 lags (one trading week) will balance model fit and parsimony.
+
+4. **Regime awareness:** The sharp contrast between post-2018 and extended-sample results for SOFR--EFFR motivates the regime-dependent impulse response analysis in Section 5.5.
+
+\newpage
+
+# References
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+Adrian, T., Boyarchenko, N., and Shachar, O. (2017). Dealer balance sheets and bond liquidity provision. *Journal of Monetary Economics*, 89, 92--109.
+
+Bowman, D., Lobell, J., and Marquardt, E. (2019). Historical proxies for the Secured Overnight Financing Rate. *FEDS Notes*, Board of Governors of the Federal Reserve System, July 15.
+
+Brunnermeier, M. K. and Pedersen, L. H. (2009). Market liquidity and funding liquidity. *Review of Financial Studies*, 22(6), 2201--2238.
+
+Bruno, V. and Shin, H. S. (2015). Cross-border banking and global liquidity. *Review of Economic Studies*, 82(2), 535--564.
+
+Copeland, A., Martin, A., and Walker, M. (2014). Repo runs: Evidence from the tri-party repo market. *Journal of Finance*, 69(6), 2343--2380.
+
+Duffie, D. and Krishnamurthy, A. (2016). Passthrough efficiency in the Fed's new monetary policy setting. In *Designing Resilient Monetary Policy Frameworks for the Future*, Federal Reserve Bank of Kansas City Jackson Hole Symposium.
+
+Granger, C. W. J. (1969). Investigating causal relations by econometric models and cross-spectral methods. *Econometrica*, 37(3), 424--438.
