@@ -1,118 +1,90 @@
 X,Y,Lag,N,F_stat,p_value,Sig,Battery
-SOFR_EFFR,r_HYG,1,2002,2.57,0.1091,   ,ETF_funding_to_credit
-SOFR_EFFR,r_HYG,5,2002,0.588,0.709,   ,ETF_funding_to_credit
-SOFR_EFFR,r_HYG,10,2002,0.41,0.9427,   ,ETF_funding_to_credit
-SOFR_EFFR,r_LQD,1,2002,1.44,0.2303,   ,ETF_funding_to_credit
-SOFR_EFFR,r_LQD,5,2002,0.493,0.782,   ,ETF_funding_to_credit
-SOFR_EFFR,r_LQD,10,2002,0.542,0.8611,   ,ETF_funding_to_credit
-SOFR_EFFR,d_log_HYG_IEF,1,2002,0.685,0.4079,   ,ETF_funding_to_credit
-SOFR_EFFR,d_log_HYG_IEF,5,2002,0.193,0.9652,   ,ETF_funding_to_credit
-SOFR_EFFR,d_log_HYG_IEF,10,2002,0.376,0.9574,   ,ETF_funding_to_credit
-SOFR_EFFR,d_log_LQD_IEF,1,2002,0.615,0.4331,   ,ETF_funding_to_credit
-SOFR_EFFR,d_log_LQD_IEF,5,2002,0.726,0.604,   ,ETF_funding_to_credit
-SOFR_EFFR,d_log_LQD_IEF,10,2002,0.461,0.9155,   ,ETF_funding_to_credit
-SOFR_EFFR,d_log_HYG_LQD,1,2002,0.085,0.7706,   ,ETF_funding_to_credit
-SOFR_EFFR,d_log_HYG_LQD,5,2002,0.272,0.9288,   ,ETF_funding_to_credit
-SOFR_EFFR,d_log_HYG_LQD,10,2002,0.406,0.9444,   ,ETF_funding_to_credit
-d_Reserves,r_HYG,1,2002,11.371,8e-4,***,ETF_funding_to_credit
-d_Reserves,r_HYG,5,2002,2.466,0.0309, **,ETF_funding_to_credit
-d_Reserves,r_HYG,10,2002,1.46,0.1485,   ,ETF_funding_to_credit
-d_Reserves,r_LQD,1,2002,0.001,0.9797,   ,ETF_funding_to_credit
-d_Reserves,r_LQD,5,2002,1.417,0.2149,   ,ETF_funding_to_credit
-d_Reserves,r_LQD,10,2002,1.202,0.2845,   ,ETF_funding_to_credit
-d_Reserves,d_log_HYG_IEF,1,2002,6.11,0.0135, **,ETF_funding_to_credit
-d_Reserves,d_log_HYG_IEF,5,2002,2.342,0.0394, **,ETF_funding_to_credit
-d_Reserves,d_log_HYG_IEF,10,2002,1.481,0.1403,   ,ETF_funding_to_credit
-d_Reserves,d_log_LQD_IEF,1,2002,0.501,0.4792,   ,ETF_funding_to_credit
-d_Reserves,d_log_LQD_IEF,5,2002,2.435,0.0328, **,ETF_funding_to_credit
-d_Reserves,d_log_LQD_IEF,10,2002,1.742,0.0664,  *,ETF_funding_to_credit
-d_Reserves,d_log_HYG_LQD,1,2002,11.962,6e-4,***,ETF_funding_to_credit
-d_Reserves,d_log_HYG_LQD,5,2002,2.085,0.0645,  *,ETF_funding_to_credit
-d_Reserves,d_log_HYG_LQD,10,2002,1.073,0.3798,   ,ETF_funding_to_credit
-d_TGA,r_HYG,1,2002,7.022,0.0081,***,ETF_funding_to_credit
-d_TGA,r_HYG,5,2002,1.664,0.1401,   ,ETF_funding_to_credit
-d_TGA,r_HYG,10,2002,1.312,0.2182,   ,ETF_funding_to_credit
-d_TGA,r_LQD,1,2002,1.941,0.1637,   ,ETF_funding_to_credit
-d_TGA,r_LQD,5,2002,0.546,0.7416,   ,ETF_funding_to_credit
-d_TGA,r_LQD,10,2002,0.594,0.82,   ,ETF_funding_to_credit
-d_TGA,d_log_HYG_IEF,1,2002,7.836,0.0052,***,ETF_funding_to_credit
-d_TGA,d_log_HYG_IEF,5,2002,2.043,0.0698,  *,ETF_funding_to_credit
-d_TGA,d_log_HYG_IEF,10,2002,1.426,0.1624,   ,ETF_funding_to_credit
-d_TGA,d_log_LQD_IEF,1,2002,7.567,0.006,***,ETF_funding_to_credit
-d_TGA,d_log_LQD_IEF,5,2002,1.704,0.1303,   ,ETF_funding_to_credit
-d_TGA,d_log_LQD_IEF,10,2002,1.732,0.0685,  *,ETF_funding_to_credit
-d_TGA,d_log_HYG_LQD,1,2002,1.676,0.1956,   ,ETF_funding_to_credit
-d_TGA,d_log_HYG_LQD,5,2002,0.809,0.5434,   ,ETF_funding_to_credit
-d_TGA,d_log_HYG_LQD,10,2002,0.473,0.9082,   ,ETF_funding_to_credit
-r_HYG,SOFR_EFFR,1,2002,0.047,0.828,   ,ETF_reverse
-r_HYG,SOFR_EFFR,5,2002,1.002,0.4147,   ,ETF_reverse
-r_HYG,d_Reserves,1,2002,3.708,0.0543,  *,ETF_reverse
-r_HYG,d_Reserves,5,2002,2.302,0.0426, **,ETF_reverse
-r_HYG,d_TGA,1,2002,0.066,0.7971,   ,ETF_reverse
-r_HYG,d_TGA,5,2002,4.904,2e-4,***,ETF_reverse
-r_LQD,SOFR_EFFR,1,2002,1.575,0.2096,   ,ETF_reverse
-r_LQD,SOFR_EFFR,5,2002,0.648,0.6629,   ,ETF_reverse
-r_LQD,d_Reserves,1,2002,0.98,0.3222,   ,ETF_reverse
-r_LQD,d_Reserves,5,2002,7.711,0,***,ETF_reverse
-r_LQD,d_TGA,1,2002,0.257,0.6122,   ,ETF_reverse
-r_LQD,d_TGA,5,2002,3.514,0.0036,***,ETF_reverse
-d_log_HYG_IEF,SOFR_EFFR,1,2002,1.458,0.2273,   ,ETF_reverse
-d_log_HYG_IEF,SOFR_EFFR,5,2002,1.451,0.2031,   ,ETF_reverse
-d_log_HYG_IEF,d_Reserves,1,2002,1.237,0.2663,   ,ETF_reverse
-d_log_HYG_IEF,d_Reserves,5,2002,1.523,0.1795,   ,ETF_reverse
-d_log_HYG_IEF,d_TGA,1,2002,0.343,0.5583,   ,ETF_reverse
-d_log_HYG_IEF,d_TGA,5,2002,2.699,0.0194, **,ETF_reverse
-d_log_LQD_IEF,SOFR_EFFR,1,2002,0.161,0.6881,   ,ETF_reverse
-d_log_LQD_IEF,SOFR_EFFR,5,2002,1.107,0.3543,   ,ETF_reverse
-d_log_LQD_IEF,d_Reserves,1,2002,0.306,0.5801,   ,ETF_reverse
-d_log_LQD_IEF,d_Reserves,5,2002,8.581,0,***,ETF_reverse
-d_log_LQD_IEF,d_TGA,1,2002,0.021,0.8853,   ,ETF_reverse
-d_log_LQD_IEF,d_TGA,5,2002,3.495,0.0038,***,ETF_reverse
-d_log_HYG_LQD,SOFR_EFFR,1,2002,1.415,0.2343,   ,ETF_reverse
-d_log_HYG_LQD,SOFR_EFFR,5,2002,0.966,0.4371,   ,ETF_reverse
-d_log_HYG_LQD,d_Reserves,1,2002,0.897,0.3437,   ,ETF_reverse
-d_log_HYG_LQD,d_Reserves,5,2002,4.859,2e-4,***,ETF_reverse
-d_log_HYG_LQD,d_TGA,1,2002,0.726,0.3944,   ,ETF_reverse
-d_log_HYG_LQD,d_TGA,5,2002,0.933,0.4582,   ,ETF_reverse
+r_DXY,d_Baa,1,1987,24.304,0,***,DXY_to_credit
+r_DXY,d_Baa,5,1987,12.746,0,***,DXY_to_credit
+r_DXY,d_Baa,10,1987,6.875,0,***,DXY_to_credit
+r_DXY,d_Aaa,1,1987,9.889,0.0017,***,DXY_to_credit
+r_DXY,d_Aaa,5,1987,6.98,0,***,DXY_to_credit
+r_DXY,d_Aaa,10,1987,5.334,0,***,DXY_to_credit
+r_DXY,d_Baa_Aaa,1,1987,5.577,0.0183, **,DXY_to_credit
+r_DXY,d_Baa_Aaa,5,1987,9.078,0,***,DXY_to_credit
+r_DXY,d_Baa_Aaa,10,1987,7.61,0,***,DXY_to_credit
+r_DXY,r_HYG_SHV,1,1985,0.323,0.5696,   ,DXY_to_credit
+r_DXY,r_HYG_SHV,5,1985,5.238,1e-4,***,DXY_to_credit
+r_DXY,r_HYG_SHV,10,1985,1.674,0.0812,  *,DXY_to_credit
+r_DXY,r_HYG_LQD,1,1985,3.371,0.0665,  *,DXY_to_credit
+r_DXY,r_HYG_LQD,5,1985,3.307,0.0056,***,DXY_to_credit
+r_DXY,r_HYG_LQD,10,1985,1.703,0.0746,  *,DXY_to_credit
+d_Baa,r_DXY,1,1987,2.524,0.1123,   ,credit_to_DXY
+d_Baa,r_DXY,5,1987,2.807,0.0156, **,credit_to_DXY
+d_Baa,r_DXY,10,1987,1.948,0.0353, **,credit_to_DXY
+d_Aaa,r_DXY,1,1987,1.853,0.1736,   ,credit_to_DXY
+d_Aaa,r_DXY,5,1987,5.684,0,***,credit_to_DXY
+d_Aaa,r_DXY,10,1987,3.634,1e-4,***,credit_to_DXY
+r_HYG_SHV,r_DXY,1,1985,118.182,0,***,credit_to_DXY
+r_HYG_SHV,r_DXY,5,1985,25.442,0,***,credit_to_DXY
+r_HYG_SHV,r_DXY,10,1985,16.213,0,***,credit_to_DXY
+r_HYG_LQD,r_DXY,1,1985,0.03,0.862,   ,credit_to_DXY
+r_HYG_LQD,r_DXY,5,1985,4.197,8e-4,***,credit_to_DXY
+r_HYG_LQD,r_DXY,10,1985,2.988,0.001,***,credit_to_DXY
+d_Reserves,r_DXY,1,1987,8.754,0.0031,***,funding_to_DXY
+d_Reserves,r_DXY,5,1987,2.251,0.047, **,funding_to_DXY
+d_Reserves,r_DXY,10,1987,2.05,0.0254, **,funding_to_DXY
+d_TGA,r_DXY,1,1987,0.583,0.4453,   ,funding_to_DXY
+d_TGA,r_DXY,5,1987,1.295,0.2631,   ,funding_to_DXY
+d_TGA,r_DXY,10,1987,0.944,0.491,   ,funding_to_DXY
+SOFR_EFFR,r_DXY,1,1987,0,0.9996,   ,funding_to_DXY
+SOFR_EFFR,r_DXY,5,1987,0.263,0.9335,   ,funding_to_DXY
+SOFR_EFFR,r_DXY,10,1987,0.347,0.968,   ,funding_to_DXY
+r_DXY,d_Reserves,1,1987,0.067,0.7965,   ,DXY_to_funding
+r_DXY,d_Reserves,5,1987,0.232,0.9486,   ,DXY_to_funding
+r_DXY,d_Reserves,10,1987,1.778,0.0595,  *,DXY_to_funding
+r_DXY,SOFR_EFFR,1,1987,0.018,0.8933,   ,DXY_to_funding
+r_DXY,SOFR_EFFR,5,1987,0.775,0.568,   ,DXY_to_funding
+r_DXY,SOFR_EFFR,10,1987,1.018,0.4257,   ,DXY_to_funding
+r_DXY,d_TGA,1,1987,6.053,0.014, **,DXY_to_funding
+r_DXY,d_TGA,5,1987,1.316,0.2541,   ,DXY_to_funding
+r_DXY,d_TGA,10,1987,1.894,0.0418, **,DXY_to_funding
+SOFR_EFFR,r_HYG,1,2002,2.57,0.1091,   ,ETF_robustness
+SOFR_EFFR,r_HYG,5,2002,0.588,0.709,   ,ETF_robustness
+SOFR_EFFR,r_LQD,1,2002,1.44,0.2303,   ,ETF_robustness
+SOFR_EFFR,r_LQD,5,2002,0.493,0.782,   ,ETF_robustness
+SOFR_EFFR,d_log_HYG_IEF,1,2002,0.685,0.4079,   ,ETF_robustness
+SOFR_EFFR,d_log_HYG_IEF,5,2002,0.193,0.9652,   ,ETF_robustness
+SOFR_EFFR,d_log_LQD_IEF,1,2002,0.615,0.4331,   ,ETF_robustness
+SOFR_EFFR,d_log_LQD_IEF,5,2002,0.726,0.604,   ,ETF_robustness
+d_Reserves,r_HYG,1,2002,11.371,8e-4,***,ETF_robustness
+d_Reserves,r_HYG,5,2002,2.466,0.0309, **,ETF_robustness
+d_Reserves,r_LQD,1,2002,0.001,0.9797,   ,ETF_robustness
+d_Reserves,r_LQD,5,2002,1.417,0.2149,   ,ETF_robustness
+d_Reserves,d_log_HYG_IEF,1,2002,6.11,0.0135, **,ETF_robustness
+d_Reserves,d_log_HYG_IEF,5,2002,2.342,0.0394, **,ETF_robustness
+d_Reserves,d_log_LQD_IEF,1,2002,0.501,0.4792,   ,ETF_robustness
+d_Reserves,d_log_LQD_IEF,5,2002,2.435,0.0328, **,ETF_robustness
+d_TGA,r_HYG,1,2002,7.022,0.0081,***,ETF_robustness
+d_TGA,r_HYG,5,2002,1.664,0.1401,   ,ETF_robustness
+d_TGA,r_LQD,1,2002,1.941,0.1637,   ,ETF_robustness
+d_TGA,r_LQD,5,2002,0.546,0.7416,   ,ETF_robustness
+d_TGA,d_log_HYG_IEF,1,2002,7.836,0.0052,***,ETF_robustness
+d_TGA,d_log_HYG_IEF,5,2002,2.043,0.0698,  *,ETF_robustness
+d_TGA,d_log_LQD_IEF,1,2002,7.567,0.006,***,ETF_robustness
+d_TGA,d_log_LQD_IEF,5,2002,1.704,0.1303,   ,ETF_robustness
 SOFR_EFFR,d_JPY_basis,1,493,1.342,0.2472,   ,CCB
 SOFR_EFFR,d_JPY_basis,5,493,0.826,0.5313,   ,CCB
 d_Reserves,d_JPY_basis,1,494,0.086,0.7692,   ,CCB
 d_Reserves,d_JPY_basis,5,494,0.487,0.7861,   ,CCB
-d_TGA,d_JPY_basis,1,494,0.136,0.712,   ,CCB
-d_TGA,d_JPY_basis,5,494,0.548,0.7397,   ,CCB
+r_DXY,d_JPY_basis,1,489,3.883,0.0493, **,CCB
+r_DXY,d_JPY_basis,5,489,4.376,7e-4,***,CCB
 d_JPY_basis,d_Baa,1,492,0.001,0.9719,   ,CCB
 d_JPY_basis,d_Baa,5,492,0.333,0.893,   ,CCB
 d_JPY_basis,d_Aaa,1,492,0.13,0.7186,   ,CCB
 d_JPY_basis,d_Aaa,5,492,0.135,0.9843,   ,CCB
 d_JPY_basis,d_Baa_Aaa,1,492,0.402,0.5262,   ,CCB
 d_JPY_basis,d_Baa_Aaa,5,492,1.32,0.2543,   ,CCB
-JPY,d_Baa,1,493,0.792,0.3741,   ,CCB
-JPY,d_Baa,5,493,0.523,0.7591,   ,CCB
-JPY,d_Aaa,1,493,0.896,0.3443,   ,CCB
-JPY,d_Aaa,5,493,0.322,0.8999,   ,CCB
-JPY,d_Baa_Aaa,1,493,0.118,0.7317,   ,CCB
-JPY,d_Baa_Aaa,5,493,1.301,0.2621,   ,CCB
 d_Baa,d_JPY_basis,1,492,9.957,0.0017,***,CCB
 d_Baa,d_JPY_basis,5,492,5.186,1e-4,***,CCB
 d_Aaa,d_JPY_basis,1,492,15.257,1e-4,***,CCB
 d_Aaa,d_JPY_basis,5,492,7.235,0,***,CCB
-d_Baa_Aaa,d_JPY_basis,1,492,3.437,0.0643,  *,CCB
-d_Baa_Aaa,d_JPY_basis,5,492,1.405,0.2208,   ,CCB
-SOFR_EFFR,d_Baa,1,493,1.178,0.2782,   ,CCB
-SOFR_EFFR,d_Baa,5,493,0.5,0.7764,   ,CCB
-SOFR_EFFR,d_Aaa,1,493,1.364,0.2435,   ,CCB
-SOFR_EFFR,d_Aaa,5,493,0.534,0.7502,   ,CCB
-SOFR_EFFR,d_Baa_Aaa,1,493,0.126,0.7228,   ,CCB
-SOFR_EFFR,d_Baa_Aaa,5,493,0.439,0.8212,   ,CCB
-d_Reserves,d_Baa,1,493,0.465,0.4954,   ,CCB
-d_Reserves,d_Baa,5,493,0.736,0.5968,   ,CCB
-d_Reserves,d_Aaa,1,493,0.19,0.6632,   ,CCB
-d_Reserves,d_Aaa,5,493,0.596,0.7028,   ,CCB
-d_Reserves,d_Baa_Aaa,1,493,0,0.996,   ,CCB
-d_Reserves,d_Baa_Aaa,5,493,0.183,0.9688,   ,CCB
-d_TGA,d_Baa,1,493,2.866,0.0911,  *,CCB
-d_TGA,d_Baa,5,493,1.089,0.3654,   ,CCB
-d_TGA,d_Aaa,1,493,2.39,0.1228,   ,CCB
-d_TGA,d_Aaa,5,493,0.636,0.672,   ,CCB
-d_TGA,d_Baa_Aaa,1,493,0.322,0.5709,   ,CCB
-d_TGA,d_Baa_Aaa,5,493,1.52,0.1818,   ,CCB
+r_DXY,d_JPY_basis,1,489,3.883,0.0493, **,CCB
+r_DXY,d_JPY_basis,5,489,4.376,7e-4,***,CCB
+d_JPY_basis,r_DXY,1,489,0.33,0.5657,   ,CCB
+d_JPY_basis,r_DXY,5,489,1.275,0.2734,   ,CCB
