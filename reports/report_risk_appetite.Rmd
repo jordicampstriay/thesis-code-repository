@@ -1,0 +1,228 @@
+---
+title: "Section 5.6 --- Risk Appetite Extension"
+subtitle: "The Plumbing of Liquidity: How Funding Conditions Transmit to Credit Spreads"
+author: "Jordi Camps Triay"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    latex_engine: pdflatex
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    keep_tex: false
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{float}
+  - \usepackage{caption}
+  - \usepackage{amsmath}
+  - \usepackage{geometry}
+  - \geometry{margin=1in}
+  - \usepackage{setspace}
+  - \onehalfspacing
+  - \captionsetup[table]{skip=8pt}
+  - \captionsetup[figure]{skip=6pt}
+  - \usepackage{graphicx}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, warning = FALSE, message = FALSE,
+  fig.align = "center", fig.width = 7, fig.height = 4,
+  out.width = "100%"
+)
+library(readr)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+WD <- dirname(knitr::current_input(dir = TRUE))
+knitr::opts_knit$set(root.dir = WD)
+
+gc_ext <- read_csv(file.path(WD, "granger_extension_results.csv"), show_col_types = FALSE)
+```
+
+\newpage
+
+# Introduction
+
+Sections 5.3--5.5 established the funding-to-credit transmission architecture using Moody's Aaa and Baa option-adjusted spreads as credit variables. While these are the standard academic measures---with histories spanning nearly a century---they are model-based, end-of-day estimates that exclude some dimensions of market-based credit risk pricing. This section extends the analysis in two directions:
+
+**Part A** replaces Moody's spreads with ETF-based credit measures. The ratios HYG/IEF (high-yield vs. intermediate Treasury) and LQD/IEF (investment-grade vs. intermediate Treasury) strip out duration exposure and isolate the credit risk component using actual traded prices. The ratio HYG/LQD provides a market-based analogue to the Moody's Baa--Aaa quality differential.
+
+**Part B** introduces the JPY/USD 3-month cross-currency basis as a proxy for global dollar funding conditions. The cross-currency basis measures the cost of borrowing dollars through FX swap markets rather than domestic money markets; a more negative basis signals a larger dollar funding premium. This links our domestic funding analysis to the global dollar funding channel documented by Bruno and Shin (2015). The data covers May 2024--May 2026 (495 observations), limiting the analysis to exploratory techniques appropriate for the sample size.
+
+# Part A: ETF-Based Credit Measures
+
+## Variable Construction
+
+We construct three duration-hedged credit measures from daily ETF closing prices:
+
+- $\Delta\log(\text{HYG}/\text{IEF})$: Daily change in the log ratio of the iShares High Yield ETF to the 7--10 year Treasury ETF. This isolates high-yield credit risk appetite by neutralizing the common duration component.
+- $\Delta\log(\text{LQD}/\text{IEF})$: Same construction for the iShares Investment Grade ETF. Captures investment-grade credit risk appetite.
+- $\Delta\log(\text{HYG}/\text{LQD})$: The ratio of high-yield to investment-grade ETFs. This is a market-traded proxy for the quality differential, analogous to the Moody's Baa--Aaa spread.
+
+All three variables are stationary by construction (log-differenced ratios of I(1) price series) with ADF statistics well below critical values ($p < 0.01$ for all six ETF variables tested).
+
+## Granger Causality: Funding to ETF Credit
+
+```{r granger_etf_sig}
+etf_sig <- gc_ext %>%
+  filter(Battery == "ETF_funding_to_credit", Sig != "   ") %>%
+  mutate(
+    Direction = paste0(X, " $\\rightarrow$ ", Y)
+  ) %>%
+  dplyr::select(Direction, Lag, N, F_stat, p_value, Sig)
+
+kable(etf_sig, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Significant Granger Causality: Funding Variables to ETF Credit Measures (Post-2018)",
+      col.names = c("Direction", "Lag", "$N$", "$F$-stat", "$p$-value", ""),
+      digits = c(0, 0, 0, 3, 4, 0),
+      align = c("l", "c", "c", "c", "c", "l")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 9) %>%
+  footnote(general = "*** p<0.01, ** p<0.05, * p<0.10. 13 of 45 tests significant at 10 percent level.",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+The ETF-based Granger tests confirm and strengthen the Moody's-based findings:
+
+**Reserve channel confirmed.** $\Delta$Reserves Granger-causes all ETF credit measures at lag 1 and lag 5. The strongest result is $\Delta$Reserves $\rightarrow$ $\Delta\log$(HYG/LQD) ($F = 11.96$, $p = 0.0006$ at lag 1)---the market-based quality differential. This parallels the Moody's result where $\Delta$Reserves predicted $\Delta$(Baa--Aaa).
+
+**TGA channel emerges more clearly.** $\Delta$TGA Granger-causes both $\Delta\log$(HYG/IEF) and $\Delta\log$(LQD/IEF) at lag 1 ($F = 7.84$ and $F = 7.57$, both $p < 0.01$). This is stronger than the Moody's-based TGA results, possibly because ETF prices react more quickly to Treasury cash-flow news than model-based OAS estimates.
+
+**SOFR--EFFR remains insignificant.** No SOFR--EFFR $\rightarrow$ ETF credit test reaches significance, confirming the post-2018 price channel null documented in Section 5.3.
+
+**Reverse causality is present.** ETF credit returns Granger-cause $\Delta$Reserves and $\Delta$TGA at the 5-day lag, suggesting feedback effects where credit market movements anticipate or influence funding conditions. This bidirectionality is more pronounced than in the Moody's analysis, likely because ETF prices are true real-time market signals while Moody's spreads update with a lag.
+
+## VAR: ETF Credit Responses to Funding Shocks
+
+```{r irf_etf, fig.cap="Impulse Response Functions: Funding Shocks to ETF-Based Credit Measures (Post-2018, VAR E). HYG/IEF = high-yield risk appetite; LQD/IEF = investment-grade risk appetite. Shaded: 95\\% bootstrap CI.", fig.height=7}
+knitr::include_graphics(file.path(WD, "fig_irf_panel_etf.pdf"))
+```
+
+VAR E estimates a 5-variable system ($\Delta$TGA, $\Delta$Reserves, SOFR--EFFR, $\Delta\log$(LQD/IEF), $\Delta\log$(HYG/IEF)) with 14 lags (AIC). The model is stable (max eigenvalue = 0.947) with 2,002 effective observations.
+
+The reserve channel is the dominant funding contributor, consistent with the Moody's results. $\Delta$Reserves is the only funding variable that is jointly significant in the multivariate Granger test ($F = 2.36$, $p < 0.0001$). The adjusted $R^2$ for the ETF credit equations (15.8\% for HYG/IEF, 17.2\% for LQD/IEF) is roughly double the Moody's-based values (8.1\% for $\Delta$Baa, 8.1\% for $\Delta$Aaa), reflecting the richer autoregressive structure of ETF returns compared to OAS changes.
+
+## Forecast Error Variance Decomposition
+
+```{r fevd_etf, fig.cap="FEVD for ETF credit measures (VAR E). Reserve shocks explain 1.4\\% of HYG/IEF variance at h=30, while cross-credit (LQD/IEF) explains 38\\%.", fig.height=3.5}
+knitr::include_graphics(file.path(WD, "fig_fevd_etf.pdf"))
+```
+
+```{r fevd_etf_table}
+fevd_df <- data.frame(
+  Response = c(rep("$\\Delta\\log$(HYG/IEF)", 3), rep("$\\Delta\\log$(LQD/IEF)", 3)),
+  Horizon = rep(c(1, 10, 30), 2),
+  TGA = c(0.1, 0.6, 0.8, 0.0, 0.6, 0.7),
+  Reserves = c(0.1, 1.0, 1.4, 0.0, 1.0, 1.5),
+  SOFR = c(0.0, 0.1, 0.4, 0.0, 0.1, 0.4),
+  Own = c(63.4, 59.9, 59.1, 99.9, 92.2, 89.8),
+  Cross = c(36.4, 38.4, 38.3, 0.0, 6.1, 7.6),
+  stringsAsFactors = FALSE
+)
+
+kable(fevd_df, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "FEVD: ETF Credit Measures (VAR E, Post-2018)",
+      col.names = c("Response", "$h$", "$\\Delta$TGA", "$\\Delta$Res.", "SOFR--EFFR", "Own", "Cross"),
+      digits = 1, align = c("l","c","c","c","c","c","c")) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 9) %>%
+  add_header_above(c(" " = 2, "Funding (\\\\%)" = 3, "Credit (\\\\%)" = 2), escape = FALSE)
+```
+
+The FEVD reveals a funding contribution of 2.6\% to HYG/IEF variance and 2.6\% to LQD/IEF variance at $h = 30$---closely matching the 2.7\% total for $\Delta$Aaa in the Moody's VAR. The cross-credit structure differs: LQD/IEF (the IG measure) explains 38\% of HYG/IEF variance, paralleling the Aaa $\rightarrow$ Baa hierarchy found with Moody's data but with a somewhat smaller magnitude (38\% vs. 63\%).
+
+## Quality Differential Comparison
+
+```{r irf_quality, fig.cap="Funding Shocks to HYG/LQD (Market-Based Quality Differential). Compare with the Moody's Baa--Aaa responses in Section 5.4.", fig.height=3.5}
+knitr::include_graphics(file.path(WD, "fig_irf_quality_etf.pdf"))
+```
+
+VAR F replaces the ETF levels with the $\Delta\log$(HYG/LQD) quality differential. The reserve channel is again jointly significant ($F = 3.01$, $p < 0.0001$), while SOFR--EFFR is not. The FEVD shows reserves explaining 0.9\% of HYG/LQD variance at $h = 30$---similar in magnitude to the Moody's-based result for $\Delta$(Baa--Aaa), which confirms that the funding-to-quality-differential channel is robust to the choice of credit measure.
+
+
+# Part B: JPY/USD Cross-Currency Basis
+
+## Context and Data
+
+The 3-month JPY/USD cross-currency basis measures the premium (or discount) for borrowing US dollars through FX swap markets relative to direct USD borrowing. A negative basis indicates that dollar borrowing via FX swaps is more expensive than direct access---a ``dollar funding premium'' that reflects global demand for dollar liquidity. The theoretical link to our analysis runs through Bruno and Shin (2015): tighter global dollar funding conditions (more negative basis) should constrain dollar-denominated lending and ultimately widen credit spreads.
+
+Our cross-currency basis data covers May 2024--May 2026 (495 observations). The JPY basis averages --31.7 bp with a standard deviation of 5.5 bp, ranging from --43.4 bp to --21.1 bp. Both the level and first difference pass ADF stationarity tests.
+
+```{r ts_ccb, fig.cap="JPY/USD 3-month cross-currency basis and SOFR--EFFR spread (May 2024 -- May 2026). More negative basis = higher dollar funding premium.", fig.height=3.5}
+knitr::include_graphics(file.path(WD, "fig_ts_ccb_vs_sofr.pdf"))
+```
+
+## Correlations
+
+The level of the JPY basis is significantly correlated with both SOFR--EFFR ($r = 0.35$, $p < 0.001$) and Moody's Aaa spreads ($r = 0.66$, $p < 0.001$). These level correlations likely reflect common macroeconomic trends rather than high-frequency transmission. In first differences, $\Delta$(JPY basis) is significantly correlated with $\Delta$Baa ($r = -0.28$, $p < 0.001$) and $\Delta$Aaa ($r = -0.20$, $p < 0.001$): when the basis becomes more negative (dollar funding tightens), credit spreads widen. The sign is consistent with the global dollar funding channel.
+
+## Granger Causality
+
+```{r granger_ccb}
+ccb_gc <- gc_ext %>%
+  filter(Battery == "CCB") %>%
+  mutate(Direction = paste0(X, " $\\rightarrow$ ", Y)) %>%
+  dplyr::select(Direction, Lag, N, F_stat, p_value, Sig)
+
+kable(ccb_gc, booktabs = TRUE, escape = FALSE, longtable = FALSE,
+      caption = "Granger Causality: Cross-Currency Basis Sample (May 2024 -- May 2026)",
+      col.names = c("Direction", "Lag", "$N$", "$F$-stat", "$p$-value", ""),
+      digits = c(0, 0, 0, 3, 4, 0),
+      align = c("l", "c", "c", "c", "c", "l")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 8) %>%
+  footnote(general = "*** p<0.01, ** p<0.05, * p<0.10. 42 tests conducted.",
+           general_title = "", footnote_as_chunk = TRUE)
+```
+
+The Granger results for the cross-currency basis sample reveal a clear and informative pattern:
+
+**No funding-to-basis transmission.** Neither SOFR--EFFR, $\Delta$Reserves, nor $\Delta$TGA Granger-causes $\Delta$(JPY basis) at any lag. Domestic US funding conditions do not predict changes in the JPY/USD cross-currency basis. This is not surprising: the basis reflects global dollar demand from non-US institutions, which is driven by Japanese institutional portfolio allocation, Bank of Japan policy, and global risk appetite rather than by overnight SOFR dynamics.
+
+**No basis-to-credit transmission.** $\Delta$(JPY basis) does not Granger-cause $\Delta$Baa, $\Delta$Aaa, or $\Delta$(Baa--Aaa) at any lag. Nor does the level of the basis predict credit spread changes. The contemporaneous correlation ($r = -0.28$ for $\Delta$Baa) does not translate into predictive content.
+
+**Credit-to-basis transmission is strong.** $\Delta$Aaa Granger-causes $\Delta$(JPY basis) at both lags ($F = 15.26$, $p < 0.001$; $F = 7.24$, $p < 0.001$), and $\Delta$Baa does as well ($F = 9.96$, $p = 0.002$; $F = 5.19$, $p < 0.001$). This is the opposite direction from the Bruno--Shin hypothesis: credit spread movements lead the cross-currency basis, not the reverse. The interpretation is that US credit market stress signals propagate to global dollar funding markets, widening the basis as non-US institutions scramble for dollar hedging when US credit conditions deteriorate.
+
+## VAR Analysis
+
+```{r irf_ccb_bivar, fig.cap="Bivariate IRFs: SOFR--EFFR and JPY/USD basis change. The basis does not respond to SOFR shocks, nor does SOFR respond to basis shocks.", fig.height=3}
+knitr::include_graphics(file.path(WD, "fig_irf_ccb_bivariate.pdf"))
+```
+
+```{r irf_ccb_tri, fig.cap="Trivariate IRFs: Basis → SOFR--EFFR → Baa. The JPY basis shock explains 7.9\\% of Baa variance on impact but shows no dynamic transmission.", fig.height=3}
+knitr::include_graphics(file.path(WD, "fig_irf_ccb_trivariate.pdf"))
+```
+
+The bivariate VAR (BIC lag = 1, 493 observations) confirms the Granger null: neither variable predicts the other. The SOFR--EFFR equation achieves $R^2 = 61.9\%$ (its own persistence), while the $\Delta$(JPY basis) equation has $R^2 = 0.9\%$.
+
+The trivariate VAR ($\Delta$(JPY basis) $\rightarrow$ SOFR--EFFR $\rightarrow$ $\Delta$Baa) reveals that $\Delta$Baa is the only significant Granger-cause ($F = 5.16$, $p = 0.006$), confirming that credit leads the basis. The FEVD shows the JPY basis explaining 7.9\% of $\Delta$Baa variance on impact---this is a contemporaneous correlation artifact (the Cholesky ordering places the basis first), not a dynamic predictive relationship, as it remains flat at 7.9\% across all horizons.
+
+## Rolling Correlations
+
+```{r roll_ccb, fig.cap="60-day rolling correlations: JPY basis vs SOFR--EFFR (levels) and $\\Delta$(JPY basis) vs $\\Delta$Baa. Both correlations are time-varying but predominantly positive (levels) and negative (changes).", fig.height=3.5}
+knitr::include_graphics(file.path(WD, "fig_rolling_corr_ccb.pdf"))
+```
+
+The rolling correlations confirm a stable contemporaneous relationship (the level correlation stays in the 0.2--0.5 range) but no leading or lagging predictive structure.
+
+
+# Summary
+
+This extension yields three main conclusions:
+
+1. **ETF-based credit measures confirm the Moody's results.** The reserve channel ($\Delta$Reserves) is the dominant funding contributor to credit risk in both frameworks, explaining comparable shares of forecast error variance. The price channel (SOFR--EFFR) is insignificant in both. The TGA channel is somewhat stronger in the ETF framework, potentially reflecting the faster price discovery in traded ETFs. These results validate the core findings of Sections 5.3--5.5 and demonstrate that they are not artifacts of the Moody's OAS methodology.
+
+2. **The JPY/USD cross-currency basis does not add predictive power** for US credit spreads over the available sample. Despite significant contemporaneous correlations consistent with the Bruno--Shin (2015) global dollar funding channel, the Granger tests find no predictive causality from basis to credit. The causal direction runs from US credit to the basis, suggesting that US credit dynamics drive global dollar funding conditions rather than the reverse---at least over this 2-year window.
+
+3. **Honest limitations.** The cross-currency basis sample (495 observations, May 2024--May 2026) covers a period of relative stability without a major funding crisis. The Bruno--Shin channel may activate during global stress episodes (2008, 2020) that are absent from our sample. A longer basis time series---ideally spanning the GFC and COVID---would be needed to test the global funding channel rigorously. The null result should be interpreted as ``not detectable in this sample'' rather than ``absent.''
+
+
+\newpage
+
+# References
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+Bruno, V. and Shin, H. S. (2015). Cross-border banking and global liquidity. *Review of Economic Studies*, 82(2), 535--564.
+
+Du, W., Tepper, A., and Verdelhan, A. (2018). Deviations from covered interest rate parity. *Journal of Finance*, 73(3), 915--957.
