@@ -1,4 +1,4 @@
-# The Plumbing of Liquidity: How Funding Conditions Transmit to Credit Spreads
+# How Funding Conditions Transmit to Credit Spreads
 
 **Author:** Jordi Camps Triay  
 **Chapter 5 — Empirical Analysis**
