@@ -384,13 +384,18 @@ cat("================================================================\n\n")
 ccb <- read_csv(file.path(WD, "..", "cross_currency_basis.csv"), show_col_types = FALSE)
 ccb$Date <- as.Date(ccb$Date)
 
-df_ccb <- df %>%
-  inner_join(ccb %>% dplyr::select(Date, JPY), by = "Date") %>%
+# Compute returns on full daily series BEFORE joining to avoid multi-day
+# returns when the CCB data has gaps on different holidays.
+df_pre <- df %>%
   arrange(Date) %>%
-  mutate(
-    d_JPY_basis = c(NA, diff(JPY)),
-    r_DXY = c(NA, 100 * diff(log(DXY)))
-  )
+  mutate(r_DXY = c(NA, 100 * diff(log(DXY))))
+
+ccb <- ccb %>%
+  arrange(Date) %>%
+  mutate(d_JPY_basis = c(NA, diff(JPY)))
+
+df_ccb <- df_pre %>%
+  inner_join(ccb %>% dplyr::select(Date, JPY, d_JPY_basis), by = "Date")
 
 cat(sprintf("  Merged sample: %d rows, %s to %s\n",
             nrow(df_ccb), min(df_ccb$Date), max(df_ccb$Date)))
@@ -428,9 +433,7 @@ for (xv in c("d_Baa", "d_Aaa")) {
   ccb_granger <- rbind(ccb_granger,
     run_granger(df_ccb, xv, "d_JPY_basis", lags = c(1, 5), min_obs = 50))
 }
-# DXY ↔ basis
-ccb_granger <- rbind(ccb_granger,
-  run_granger(df_ccb, "r_DXY", "d_JPY_basis", lags = c(1, 5), min_obs = 50))
+# DXY ← basis (reverse direction only; r_DXY → d_JPY_basis already tested above)
 ccb_granger <- rbind(ccb_granger,
   run_granger(df_ccb, "d_JPY_basis", "r_DXY", lags = c(1, 5), min_obs = 50))
 

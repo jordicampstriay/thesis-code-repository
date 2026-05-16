@@ -33,7 +33,8 @@ for (p in required_pkgs) {
   suppressPackageStartupMessages(library(p, character.only = TRUE))
 }
 
-source(file.path(dirname(if (interactive()) rstudioapi::getSourceEditorContext()$path else sys.frame(1)$ofile), "config.R"))
+WD <- "/Users/jordi/Downloads/University/TFG/Data/Thesis"
+setwd(WD)
 
 cat("================================================================\n")
 cat("  STEP 4 — REGIME-DEPENDENT ANALYSIS\n")
@@ -41,7 +42,7 @@ cat("================================================================\n\n")
 
 
 # ── 1. LOAD DATA ─────────────────────────────────────────────────────────────
-df <- read_csv(file.path(DATA_DIR, "data_master.csv"), show_col_types = FALSE)
+df <- read_csv("data_master.csv", show_col_types = FALSE)
 df$Date <- as.Date(df$Date)
 df_post <- df %>% filter(Date >= as.Date("2018-04-02"))
 
@@ -82,7 +83,7 @@ df_post$stress[is.na(df_post$SOFR_EFFR)] <- NA
 
 n_stress <- sum(df_post$stress == 1, na.rm = TRUE)
 n_calm   <- sum(df_post$stress == 0, na.rm = TRUE)
-cat(sprintf("  Primary threshold: |SOFR-EFFR| > 2 bp\n"))
+cat(sprintf("  Primary threshold: |SOFR-EFFR| > 5 bp\n"))
 cat(sprintf("  Stress days: %d (%.1f%%)  |  Calm days: %d (%.1f%%)\n\n",
             n_stress, 100*n_stress/(n_stress+n_calm),
             n_calm, 100*n_calm/(n_stress+n_calm)))
@@ -345,7 +346,7 @@ if (nrow(df_roll) > window) {
     theme(plot.title = element_text(size = 10, face = "bold"),
           panel.grid.minor = element_blank())
 
-  ggsave(file.path(FIG_DIR, "fig_rolling_corr_sofr_baaaaa.pdf"), p_roll_cor, width = 7, height = 3.5, device = "pdf")
+  ggsave("fig_rolling_corr_sofr_baaaaa.pdf", p_roll_cor, width = 7, height = 3.5, device = "pdf")
   cat("  Saved: fig_rolling_corr_sofr_baaaaa.pdf\n")
 
   # Plot rolling SD of SOFR-EFFR with correlation overlay
@@ -361,7 +362,7 @@ if (nrow(df_roll) > window) {
     theme(plot.title = element_text(size = 10, face = "bold"),
           panel.grid.minor = element_blank())
 
-  ggsave(file.path(FIG_DIR, "fig_rolling_vol_sofr.pdf"), p_roll_dual, width = 7, height = 3.5, device = "pdf")
+  ggsave("fig_rolling_vol_sofr.pdf", p_roll_dual, width = 7, height = 3.5, device = "pdf")
   cat("  Saved: fig_rolling_vol_sofr.pdf\n\n")
 }
 
@@ -493,7 +494,7 @@ p_scatter <- ggplot(scatter_df, aes(x = SOFR_EFFR, y = d_Baa_Aaa, color = Regime
     panel.grid.minor = element_blank()
   )
 
-ggsave(file.path(FIG_DIR, "fig_scatter_regime_sofr_baaaaa.pdf"), p_scatter, width = 6, height = 4.5, device = "pdf")
+ggsave("fig_scatter_regime_sofr_baaaaa.pdf", p_scatter, width = 6, height = 4.5, device = "pdf")
 cat("  Saved: fig_scatter_regime_sofr_baaaaa.pdf\n")
 
 # Reserves scatter by regime
@@ -515,7 +516,7 @@ p_scatter_res <- ggplot(scatter_res, aes(x = d_Reserves, y = d_Aaa, color = Regi
     panel.grid.minor = element_blank()
   )
 
-ggsave(file.path(FIG_DIR, "fig_scatter_regime_reserves_aaa.pdf"), p_scatter_res, width = 6, height = 4.5, device = "pdf")
+ggsave("fig_scatter_regime_reserves_aaa.pdf", p_scatter_res, width = 6, height = 4.5, device = "pdf")
 cat("  Saved: fig_scatter_regime_reserves_aaa.pdf\n\n")
 
 
@@ -547,7 +548,7 @@ p_timeline <- ggplot(timeline_df, aes(x = Date, y = SOFR_EFFR)) +
     panel.grid.minor = element_blank()
   )
 
-ggsave(file.path(FIG_DIR, "fig_sofr_regime_timeline.pdf"), p_timeline, width = 8, height = 3.5, device = "pdf")
+ggsave("fig_sofr_regime_timeline.pdf", p_timeline, width = 8, height = 3.5, device = "pdf")
 cat("  Saved: fig_sofr_regime_timeline.pdf\n\n")
 
 
@@ -575,7 +576,7 @@ if (exists("event_stats") && nrow(event_stats) > 0) {
     caption = "Stress Episodes: Cumulative Credit Spread Changes (Post-2018)",
     label = "tab:stress_episodes",
     digits = c(0, 0, 0, 0, 4, 4, 4, 4))
-  print(ep_xt, file = file.path(TBL_DIR, "table_stress_episodes.tex"),
+  print(ep_xt, file = "table_stress_episodes.tex",
         include.rownames = FALSE, booktabs = TRUE,
         caption.placement = "top", table.placement = "htbp",
         sanitize.text.function = identity,
@@ -614,7 +615,7 @@ rc_xt <- xtable(regime_comp_tbl,
   caption = "Summary Statistics by Regime (Post-2018, threshold: $|$SOFR--EFFR$| > 5$ bp)",
   label = "tab:regime_comparison",
   digits = c(0, 0, 5, 5, 5, 5, 2))
-print(rc_xt, file = file.path(TBL_DIR, "table_regime_comparison.tex"),
+print(rc_xt, file = "table_regime_comparison.tex",
       include.rownames = FALSE, booktabs = TRUE,
       caption.placement = "top", table.placement = "htbp",
       sanitize.text.function = identity,
@@ -637,7 +638,7 @@ if (nrow(granger_regime) > 0) {
     caption = "Granger Causality Tests by Regime (Post-2018, threshold: $|$SOFR--EFFR$| > 5$ bp)",
     label = "tab:granger_by_regime",
     digits = c(0, 0, 0, 0, 0, 3, 4, 0))
-  print(gc_xt, file = file.path(TBL_DIR, "table_granger_by_regime.tex"),
+  print(gc_xt, file = "table_granger_by_regime.tex",
         include.rownames = FALSE, booktabs = TRUE,
         caption.placement = "top", table.placement = "htbp",
         sanitize.text.function = identity,
