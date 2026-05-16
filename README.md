@@ -64,12 +64,12 @@ R ≥ 4.3 with packages: `readr`, `dplyr`, `tidyr`, `zoo`, `tseries`, `ggplot2`,
 
 | Variable | Source | Frequency |
 |---|---|---|
-| SOFR, EFFR, ON RRP | Federal Reserve Bank of New York | Daily |
+| SOFR, EFFR, ON RRP | FRED | Daily |
 | GC Repo Rate | DTCC / Fed | Daily |
 | TED Spread (3M LIBOR − 3M T-bill) | FRED | Daily (to Jan 2022) |
 | Moody's Aaa / Baa Spreads | FRED | Daily |
-| Reserves, TGA, Fed Assets | Federal Reserve H.4.1 | Weekly |
-| DXY, ETFs (HYG, LQD, TLT, etc.) | Bloomberg | Daily |
+| Reserves, TGA, Fed Assets | FRED | Weekly |
+| DXY, ETFs (HYG, LQD, TLT, etc.) | Google Finance | Daily |
 
 ## VAR Specifications
 
