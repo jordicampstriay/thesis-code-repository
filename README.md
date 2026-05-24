@@ -1,7 +1,6 @@
 # Empirical Framework: How Funding Conditions Transmit to Credit Spreads
 
 **Author:** Jordi Camps Triay  
-**Chapter 5 of:** *The Plumbing of Liquidity*
 
 ## Overview
 
