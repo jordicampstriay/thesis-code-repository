@@ -1,0 +1,25 @@
+\begin{table}[H]
+\centering
+\scalebox{0.72}{
+\begin{tabular}{lrrrlrrl}
+  \toprule
+Direction & Lag & BG stat & BG $p$ & BG reject? & ARCH-LM & ARCH $p$ & ARCH reject? \\ 
+  \midrule
+$r$ DXY $\rightarrow$ $r$(HYG/LQD) & 1 & 70.862 & 0.0000 & Yes & 648.408 & 0.0000 & Yes \\ 
+  $r$ DXY $\rightarrow$ $r$(HYG/LQD) & 5 & 2.050 & 0.8422 & No & 699.355 & 0.0000 & Yes \\ 
+  $r$ DXY $\rightarrow$ $r$(HYG/SHV) & 1 & 34.472 & 0.0000 & Yes & 692.044 & 0.0000 & Yes \\ 
+  $r$ DXY $\rightarrow$ $r$(HYG/SHV) & 5 & 9.458 & 0.0921 & No & 704.394 & 0.0000 & Yes \\ 
+  $r$ DXY $\rightarrow$ $r$ EMB & 1 & 24.769 & 0.0002 & Yes & 609.619 & 0.0000 & Yes \\ 
+  $r$ DXY $\rightarrow$ $r$ EMB & 5 & 121.530 & 0.0000 & Yes & 573.646 & 0.0000 & Yes \\ 
+  $\Delta$Reserves $\rightarrow$ $r$ DXY & 1 & 4.186 & 0.5229 & No & 348.869 & 0.0000 & Yes \\ 
+  $\Delta$Reserves $\rightarrow$ $r$ DXY & 5 & 16.016 & 0.0068 & Yes & 354.310 & 0.0000 & Yes \\ 
+  $\Delta$TGA $\rightarrow$ $r$ DXY & 1 & 4.602 & 0.4663 & No & 339.668 & 0.0000 & Yes \\ 
+  $\Delta$TGA $\rightarrow$ $r$ DXY & 5 & 17.264 & 0.0040 & Yes & 340.627 & 0.0000 & Yes \\ 
+  $r$ DXY $\rightarrow$ $\Delta$TGA & 1 & 278.046 & 0.0000 & Yes & 231.475 & 0.0000 & Yes \\ 
+  $r$ DXY $\rightarrow$ $\Delta$TGA & 5 & 24.979 & 0.0001 & Yes & 210.781 & 0.0000 & Yes \\ 
+   \bottomrule
+\end{tabular}
+}
+\caption{Residual Diagnostics: Breusch-Godfrey (order 5) and ARCH-LM (order 5) Tests} 
+\label{tab:diagnostics_dollar}
+\end{table}

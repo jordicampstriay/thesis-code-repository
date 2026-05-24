@@ -1,0 +1,23 @@
+\begin{table}[H]
+\centering
+\caption{Classical vs.\ HAC-Robust (Newey-West) Granger F-Tests} 
+\label{tab:hac}
+\scalebox{0.72}{
+\begin{tabular}{lrrrrlrrl}
+  \toprule
+Direction & Lag & $N$ & $F$ (classical) & $p$ (classical) &  & $F$ (HAC) & $p$ (HAC) &   \\ 
+  \midrule
+$\Delta$Reserves $\rightarrow$ $\Delta$Aaa & 1 & 2003 & 6.830 & 0.0090 & *** & 3.026 & 0.0821 & * \\ 
+  $\Delta$Reserves $\rightarrow$ $\Delta$Aaa & 5 & 1999 & 3.493 & 0.0038 & *** & 1.229 & 0.2930 &  \\ 
+  $\Delta$Reserves $\rightarrow$ $\Delta$Aaa & 10 & 1994 & 2.219 & 0.0145 & ** & 0.956 & 0.4800 &  \\ 
+  $\Delta$Reserves $\rightarrow$ $\Delta$(Baa--Aaa) & 1 & 2003 & 6.741 & 0.0095 & *** & 2.112 & 0.1463 &  \\ 
+  $\Delta$Reserves $\rightarrow$ $\Delta$(Baa--Aaa) & 5 & 1999 & 2.537 & 0.0268 & ** & 0.773 & 0.5694 &  \\ 
+  $\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa) & 5 & 1999 & 3.743 & 0.0022 & *** & 1.023 & 0.4025 &  \\ 
+  $\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa) & 10 & 1994 & 2.506 & 0.0054 & *** & 1.149 & 0.3216 &  \\ 
+  $\Delta$TGA $\rightarrow$ $\Delta$Baa & 1 & 2003 & 3.249 & 0.0716 & * & 2.200 & 0.1382 &  \\ 
+  SOFR--EFFR $\rightarrow$ $\Delta$Baa & 1 & 2003 & 0.001 & 0.9763 &  & 0.001 & 0.9805 &  \\ 
+  SOFR--EFFR $\rightarrow$ $\Delta$Aaa & 5 & 1999 & 1.163 & 0.3249 &  & 0.238 & 0.9457 &  \\ 
+   \bottomrule
+\end{tabular}
+}
+\end{table}

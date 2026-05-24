@@ -1,0 +1,39 @@
+\begin{table}[H]
+\centering
+\scalebox{0.67}{
+\begin{tabular}{lllrrrrrrl}
+  \toprule
+  Variable & Form & Sample & Lags & $N$ & ADF $\tau$ & 1\% c.v. & 5\% c.v. & 10\% c.v. & I(0)? \\ 
+  \midrule
+  \multicolumn{10}{l}{\textit{Panel A: Level tests}} \\ 
+  \addlinespace
+  SOFR--EFFR & Level & Post-2018 & 8 & 2004 & -8.33 & -3.43 & -2.86 & -2.57 & Yes \\ 
+  Baa spread & Level & Post-2018 & 9 & 2002 & -3.35 & -3.43 & -2.86 & -2.57 & Yes \\ 
+  Aaa spread & Level & Post-2018 & 12 & 2002 & -3.19 & -3.43 & -2.86 & -2.57 & Yes \\ 
+  Baa--Aaa & Level & Post-2018 & 12 & 2002 & -2.85 & -3.43 & -2.86 & -2.57 & No \\ 
+  Reserves & Level & Post-2018 & 5 & 2013 & -1.45 & -3.43 & -2.86 & -2.57 & No \\ 
+  TGA & Level & Post-2018 & 10 & 2013 & -2.09 & -3.43 & -2.86 & -2.57 & No \\ 
+  ON RRP & Level & Post-2018 & 8 & 2013 & -0.71 & -3.43 & -2.86 & -2.57 & No \\ 
+  DXY & Level & 2008--2026 & 11 & 4527 & -1.38 & -3.43 & -2.86 & -2.57 & No \\ 
+  log(HYG/LQD) & Level & 2008--2026 & 16 & 4527 & -2.75 & -3.43 & -2.86 & -2.57 & No \\ 
+  log(HYG/SHV) & Level & 2008--2026 & 16 & 4527 & -3.17 & -3.43 & -2.86 & -2.57 & Yes \\ 
+  EMB & Level & 2008--2026 & 8 & 4527 & -2.17 & -3.43 & -2.86 & -2.57 & No \\ 
+  \addlinespace
+  \multicolumn{10}{l}{\textit{Panel B: Analysis variables (transformed)}} \\ 
+  \addlinespace
+  Baa spread & First diff. & Post-2018 & 10 & 1991 & -11.15 & -2.58 & -1.95 & -1.62 & Yes \\ 
+  Aaa spread & First diff. & Post-2018 & 11 & 1991 & -14.41 & -2.58 & -1.95 & -1.62 & Yes \\ 
+  Baa--Aaa & First diff. & Post-2018 & 12 & 1991 & -10.93 & -2.58 & -1.95 & -1.62 & Yes \\ 
+  Reserves & First diff. & Post-2018 & 4 & 2013 & -19.15 & -2.58 & -1.95 & -1.62 & Yes \\ 
+  TGA & First diff. & Post-2018 & 9 & 2013 & -11.93 & -2.58 & -1.95 & -1.62 & Yes \\ 
+  ON RRP & First diff. & Post-2018 & 7 & 2013 & -23.39 & -2.58 & -1.95 & -1.62 & Yes \\ 
+  DXY & Log return & 2008--2026 & 10 & 4480 & -19.81 & -2.58 & -1.95 & -1.62 & Yes \\ 
+  HYG/LQD & $\Delta$log ratio & 2008--2026 & 16 & 4500 & -17.49 & -2.58 & -1.95 & -1.62 & Yes \\ 
+  HYG/SHV & $\Delta$log ratio & 2008--2026 & 16 & 4499 & -16.27 & -2.58 & -1.95 & -1.62 & Yes \\ 
+  EMB & Log return & 2008--2026 & 16 & 4493 & -15.34 & -2.58 & -1.95 & -1.62 & Yes \\ 
+  \bottomrule
+\end{tabular}
+}
+\caption{Augmented Dickey--Fuller unit root tests. Panel~A tests variables in levels to establish integration order. Panel~B confirms stationarity of transformed variables entering the analysis. Level tests use the ``drift'' specification (constant, no trend); tests on returns and first differences use ``none'' (no deterministic components). Lag order selected by AIC over $\{0, \ldots, \lfloor(N{-}1)^{1/3}\rfloor\}$. Critical values from MacKinnon (1996).}
+\label{tab:adf_all}
+\end{table}

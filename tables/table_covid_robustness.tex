@@ -1,0 +1,55 @@
+\begin{table}[H]
+\centering
+\caption{COVID Robustness: Granger Causality With and Without February--May 2020} 
+\label{tab:covid}
+\scalebox{0.7}{
+\begin{tabular}{llrrrrl}
+  \toprule
+Sample & Direction & Lag & $N$ & $F$-stat & $p$-value &  \\ 
+  \midrule
+Full & $\Delta$Reserves $\rightarrow$ $\Delta$Aaa & 1 & 2004 & 6.830 & 0.0090 & *** \\ 
+  Full & $\Delta$Reserves $\rightarrow$ $\Delta$Aaa & 5 & 2004 & 3.493 & 0.0038 & *** \\ 
+  Full & $\Delta$Reserves $\rightarrow$ $\Delta$Aaa & 10 & 2004 & 2.219 & 0.0145 & ** \\ 
+  Full & $\Delta$Reserves $\rightarrow$ $\Delta$Baa & 1 & 2004 & 1.781 & 0.1822 &  \\ 
+  Full & $\Delta$Reserves $\rightarrow$ $\Delta$Baa & 5 & 2004 & 1.628 & 0.1493 &  \\ 
+  Full & $\Delta$Reserves $\rightarrow$ $\Delta$Baa & 10 & 2004 & 1.548 & 0.1166 &  \\ 
+  Full & $\Delta$Reserves $\rightarrow$ $\Delta$(Baa--Aaa) & 1 & 2004 & 6.741 & 0.0095 & *** \\ 
+  Full & $\Delta$Reserves $\rightarrow$ $\Delta$(Baa--Aaa) & 5 & 2004 & 2.537 & 0.0268 & ** \\ 
+  Full & $\Delta$Reserves $\rightarrow$ $\Delta$(Baa--Aaa) & 10 & 2004 & 1.439 & 0.1569 &  \\ 
+  Full & $\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa) & 1 & 2004 & 2.800 & 0.0944 & * \\ 
+  Full & $\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa) & 5 & 2004 & 3.743 & 0.0022 & *** \\ 
+  Full & $\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa) & 10 & 2004 & 2.506 & 0.0054 & *** \\ 
+  Full & $\Delta$TGA $\rightarrow$ $\Delta$Baa & 1 & 2004 & 3.249 & 0.0716 & * \\ 
+  Full & $\Delta$TGA $\rightarrow$ $\Delta$Baa & 5 & 2004 & 1.141 & 0.3365 &  \\ 
+  Full & $\Delta$TGA $\rightarrow$ $\Delta$Baa & 10 & 2004 & 0.604 & 0.8120 &  \\ 
+  Full & SOFR--EFFR $\rightarrow$ $\Delta$Baa & 1 & 2004 & 0.001 & 0.9763 &  \\ 
+  Full & SOFR--EFFR $\rightarrow$ $\Delta$Baa & 5 & 2004 & 0.549 & 0.7394 &  \\ 
+  Full & SOFR--EFFR $\rightarrow$ $\Delta$Baa & 10 & 2004 & 0.369 & 0.9600 &  \\ 
+  Full & SOFR--EFFR $\rightarrow$ $\Delta$Aaa & 1 & 2004 & 0.890 & 0.3457 &  \\ 
+  Full & SOFR--EFFR $\rightarrow$ $\Delta$Aaa & 5 & 2004 & 1.163 & 0.3249 &  \\ 
+  Full & SOFR--EFFR $\rightarrow$ $\Delta$Aaa & 10 & 2004 & 0.810 & 0.6187 &  \\ 
+  Excl. COVID & $\Delta$Reserves $\rightarrow$ $\Delta$Aaa & 1 & 1923 & 0.539 & 0.4631 &  \\ 
+  Excl. COVID & $\Delta$Reserves $\rightarrow$ $\Delta$Aaa & 5 & 1923 & 1.173 & 0.3199 &  \\ 
+  Excl. COVID & $\Delta$Reserves $\rightarrow$ $\Delta$Aaa & 10 & 1923 & 0.829 & 0.6004 &  \\ 
+  Excl. COVID & $\Delta$Reserves $\rightarrow$ $\Delta$Baa & 1 & 1923 & 0.312 & 0.5767 &  \\ 
+  Excl. COVID & $\Delta$Reserves $\rightarrow$ $\Delta$Baa & 5 & 1923 & 1.479 & 0.1935 &  \\ 
+  Excl. COVID & $\Delta$Reserves $\rightarrow$ $\Delta$Baa & 10 & 1923 & 1.116 & 0.3456 &  \\ 
+  Excl. COVID & $\Delta$Reserves $\rightarrow$ $\Delta$(Baa--Aaa) & 1 & 1923 & 1.204 & 0.2727 &  \\ 
+  Excl. COVID & $\Delta$Reserves $\rightarrow$ $\Delta$(Baa--Aaa) & 5 & 1923 & 0.393 & 0.8542 &  \\ 
+  Excl. COVID & $\Delta$Reserves $\rightarrow$ $\Delta$(Baa--Aaa) & 10 & 1923 & 0.784 & 0.6445 &  \\ 
+  Excl. COVID & $\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa) & 1 & 1923 & 0.498 & 0.4807 &  \\ 
+  Excl. COVID & $\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa) & 5 & 1923 & 2.121 & 0.0602 & * \\ 
+  Excl. COVID & $\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa) & 10 & 1923 & 1.533 & 0.1215 &  \\ 
+  Excl. COVID & $\Delta$TGA $\rightarrow$ $\Delta$Baa & 1 & 1923 & 0.238 & 0.6255 &  \\ 
+  Excl. COVID & $\Delta$TGA $\rightarrow$ $\Delta$Baa & 5 & 1923 & 0.749 & 0.5871 &  \\ 
+  Excl. COVID & $\Delta$TGA $\rightarrow$ $\Delta$Baa & 10 & 1923 & 0.426 & 0.9348 &  \\ 
+  Excl. COVID & SOFR--EFFR $\rightarrow$ $\Delta$Baa & 1 & 1923 & 1.219 & 0.2696 &  \\ 
+  Excl. COVID & SOFR--EFFR $\rightarrow$ $\Delta$Baa & 5 & 1923 & 0.597 & 0.7023 &  \\ 
+  Excl. COVID & SOFR--EFFR $\rightarrow$ $\Delta$Baa & 10 & 1923 & 0.395 & 0.9496 &  \\ 
+  Excl. COVID & SOFR--EFFR $\rightarrow$ $\Delta$Aaa & 1 & 1923 & 0.427 & 0.5135 &  \\ 
+  Excl. COVID & SOFR--EFFR $\rightarrow$ $\Delta$Aaa & 5 & 1923 & 0.083 & 0.9949 &  \\ 
+  Excl. COVID & SOFR--EFFR $\rightarrow$ $\Delta$Aaa & 10 & 1923 & 0.270 & 0.9876 &  \\ 
+   \bottomrule
+\end{tabular}
+}
+\end{table}

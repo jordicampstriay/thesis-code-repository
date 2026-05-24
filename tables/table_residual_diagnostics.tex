@@ -1,0 +1,22 @@
+\begin{table}[H]
+\centering
+\caption{Residual Diagnostics: Breusch-Godfrey (order 5) and ARCH-LM (order 5) Tests} 
+\label{tab:diagnostics}
+\scalebox{0.78}{
+\begin{tabular}{lrrrlrrl}
+  \toprule
+Direction & Lag & BG stat & BG $p$ & BG reject? & ARCH-LM & ARCH $p$ & ARCH reject? \\ 
+  \midrule
+$\Delta$Reserves $\rightarrow$ $\Delta$Aaa & 1 & 25.097 & 0.0001 & Yes & 589.437 & 0.0000 & Yes \\ 
+  $\Delta$Reserves $\rightarrow$ $\Delta$Aaa & 5 & 3.536 & 0.6180 & No & 540.546 & 0.0000 & Yes \\ 
+  $\Delta$Reserves $\rightarrow$ $\Delta$Aaa & 10 & 23.375 & 0.0003 & Yes & 544.523 & 0.0000 & Yes \\ 
+  $\Delta$Reserves $\rightarrow$ $\Delta$(Baa--Aaa) & 1 & 39.666 & 0.0000 & Yes & 387.328 & 0.0000 & Yes \\ 
+  $\Delta$Reserves $\rightarrow$ $\Delta$(Baa--Aaa) & 5 & 8.943 & 0.1114 & No & 348.155 & 0.0000 & Yes \\ 
+  $\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa) & 5 & 8.669 & 0.1230 & No & 384.844 & 0.0000 & Yes \\ 
+  $\Delta$TGA $\rightarrow$ $\Delta$(Baa--Aaa) & 10 & 24.448 & 0.0002 & Yes & 404.221 & 0.0000 & Yes \\ 
+  SOFR--EFFR $\rightarrow$ $\Delta$Baa & 1 & 39.539 & 0.0000 & Yes & 163.885 & 0.0000 & Yes \\ 
+  SOFR--EFFR $\rightarrow$ $\Delta$Baa & 5 & 12.617 & 0.0272 & Yes & 131.647 & 0.0000 & Yes \\ 
+   \bottomrule
+\end{tabular}
+}
+\end{table}
