@@ -1,10 +1,10 @@
-# Empirical Framework: How Funding Conditions Transmit to Credit Spreads
+# Empirical Analysis: How Funding Conditions Transmit to Credit Spreads
 
 **Author:** Jordi Camps Triay  
 
 ## Overview
 
-This repository contains the data, code, and outputs for the empirical analysis of how US funding market conditions transmit to corporate credit spreads. The analysis uses Granger causality with HAC-robust inference.
+This repository contains the data, code, and outputs for the empirical analysis of how US funding market conditions transmit to corporate credit spreads.
 
 ## Repository Structure
 
