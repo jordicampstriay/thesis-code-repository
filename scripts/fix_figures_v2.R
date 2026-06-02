@@ -1,10 +1,3 @@
-##############################################################################
-##  Fix ONLY the broken figures:
-##  1. SOFR histogram: use proper en-dash (not --)
-##  2. Rolling Granger post-2018 (price + quantity): use grangertest()
-##  3. Rolling DXY figures: use grangertest() + remove titles
-##############################################################################
-
 library(tidyverse)
 library(lmtest)
 library(sandwich)
@@ -18,8 +11,6 @@ d <- read.csv("../data_master.csv")
 d$Date <- as.Date(d$Date)
 d53 <- d[d$Date >= as.Date("2018-04-02") & !is.na(d$SOFR_EFFR), ]
 d54 <- d[!is.na(d$DXY) & !is.na(d$HYG) & !is.na(d$LQD) & !is.na(d$SHV) & !is.na(d$EMB), ]
-
-# ── 1. SOFR-EFFR distribution: proper dashes ─────────────────────────────
 
 pdf("figures/fig_sofr_distribution.pdf", width = 8, height = 3.5)
 par(mfrow = c(1, 2), mar = c(4, 4, 2.5, 1), mgp = c(2.5, 0.8, 0))
@@ -41,8 +32,6 @@ text(as.Date("2020-03-01"), max(d53$SOFR_EFFR, na.rm=TRUE)*0.8, "COVID",
      col = "darkred", cex = 0.7, pos = 4)
 dev.off()
 cat("Done: fig_sofr_distribution.pdf\n")
-
-# ── Rolling Granger helper using grangertest ──────────────────────────────
 
 roll_granger <- function(data, x_var, y_var, lag_order = 5,
                          window = 400, step = 15) {
@@ -66,16 +55,12 @@ roll_granger <- function(data, x_var, y_var, lag_order = 5,
   data.frame(Date = as.Date(dates), p_value = pvals, stringsAsFactors = FALSE)
 }
 
-# ── ggplot theme (no title, no subtitle) ─────────────────────────────────
-
 theme_thesis <- theme_minimal(base_size = 12) +
   theme(
     plot.title = element_blank(),
     plot.subtitle = element_blank(),
     legend.position = "bottom"
   )
-
-# ── 2. Rolling Granger: SOFR-EFFR -> Credit (Post-2018) ─────────────────
 
 cat("Computing rolling Granger: SOFR-EFFR -> credit...\n")
 
@@ -105,8 +90,6 @@ p_a5 <- ggplot(roll_a, aes(x = Date, y = p_value, color = Direction)) +
 ggsave("figures/fig_a5_rolling_granger.pdf", p_a5, width = 10, height = 5)
 cat("Done: fig_a5_rolling_granger.pdf\n")
 
-# ── 3. Rolling Granger: Quantity Channel (Post-2018) ─────────────────────
-
 cat("Computing rolling Granger: quantity channel...\n")
 
 roll_res_aaa <- roll_granger(d53, "d_Reserves", "d_Aaa")
@@ -135,8 +118,6 @@ p_qty <- ggplot(roll_qty, aes(x = Date, y = p_value, color = Direction)) +
   theme_thesis
 ggsave("figures/fig_a6_rolling_granger_qty.pdf", p_qty, width = 10, height = 5)
 cat("Done: fig_a6_rolling_granger_qty.pdf\n")
-
-# ── 4. Rolling Correlation DXY (no title) ────────────────────────────────
 
 roll_cor_fn <- function(x, y, w) {
   n <- length(x)
@@ -176,8 +157,6 @@ legend("bottomleft",
        bg = "white")
 dev.off()
 cat("Done: fig_rolling_corr_dxy.pdf\n")
-
-# ── 5. Rolling Granger DXY -> Credit (no title) ─────────────────────────
 
 cat("Computing rolling Granger: DXY -> credit (long sample, ~3 min)...\n")
 
