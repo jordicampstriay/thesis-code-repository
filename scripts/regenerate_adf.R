@@ -1,24 +1,3 @@
-###############################################################################
-#  Regenerate ADF table with proper methodology:
-#    - urca::ur.df() instead of tseries::adf.test()
-#    - Deterministic component explicitly specified
-#    - Lag order selected by AIC, reported
-#    - Level tests for ALL variables (to establish integration order)
-#    - Transformed-variable tests (to confirm stationarity for analysis)
-#
-#  Deterministic specification rationale:
-#    Level tests:
-#      "drift" (constant only) for spreads, log ratios, quantities, prices
-#      — spreads/ratios mean-revert; prices/quantities follow random walk
-#         with possible drift; no economic reason for deterministic trend
-#    Transformed-variable tests:
-#      "none" for first differences and log returns
-#      — returns/changes have approximately zero mean, no trend
-#
-#  Reference: MacKinnon (1996) for critical values.
-#  Lag selection: AIC over {0, ..., floor((N-1)^(1/3))}
-###############################################################################
-
 library(readr)
 library(dplyr)
 library(urca)
@@ -26,16 +5,12 @@ library(xtable)
 
 OUT_DIR <- "/Users/jordi/Downloads/University/TFG/Data/Thesis/Empirical Analysis/tables"
 
-# ── Load data ───────────────────────────────────────────────────────────────
-
 df <- read_csv("/Users/jordi/Downloads/University/TFG/Data/Thesis/data_master.csv",
                show_col_types = FALSE)
 df$Date <- as.Date(df$Date)
 
-# Post-2018 sample
 df_post <- df %>% filter(Date >= as.Date("2018-04-03"))
 
-# Dollar sample (all ETFs available)
 df_dollar <- df %>%
   filter(!is.na(DXY), !is.na(HYG), !is.na(LQD), !is.na(SHV), !is.na(EMB))
 
@@ -43,8 +18,6 @@ cat(sprintf("Post-2018: %d obs (%s to %s)\n",
             nrow(df_post), min(df_post$Date), max(df_post$Date)))
 cat(sprintf("Dollar:    %d obs (%s to %s)\n",
             nrow(df_dollar), min(df_dollar$Date), max(df_dollar$Date)))
-
-# ── ADF test wrapper ───────────────────────────────────────────────────────
 
 run_adf <- function(x, type = "drift") {
   x <- na.omit(x)
@@ -56,12 +29,9 @@ run_adf <- function(x, type = "drift") {
 
   test <- ur.df(x, type = type, lags = max_lag, selectlags = "AIC")
 
-  # tau statistic is first element of teststat
   tau <- test@teststat[1]
-  cv  <- test@cval[1, ]  # critical values for tau
-
-  # Actual lags used (after AIC selection)
-  # testreg is summary.lm; coefficients is a matrix (rows x 4)
+  cv  <- test@cval[1, ]  
+  
   n_coef <- nrow(test@testreg$coefficients)
   if (type == "none")  lags_used <- n_coef - 1       # y_{t-1} + lags
   if (type == "drift") lags_used <- n_coef - 2       # intercept + y_{t-1} + lags
@@ -77,11 +47,8 @@ run_adf <- function(x, type = "drift") {
        cv10 = round(cv[3], 2))
 }
 
-# ── Define all tests ──────────────────────────────────────────────────────
-
-# Panel A: Level tests (establish integration order)
 level_tests <- list(
-  # Post-2018 spreads & quantities
+
   list(label = "SOFR--EFFR",      var = "SOFR_EFFR",  data = "post", type = "drift",
        form = "Level", sample = "Post-2018"),
   list(label = "Baa spread",      var = "Baa_spread",  data = "post", type = "drift",
@@ -96,8 +63,6 @@ level_tests <- list(
        form = "Level", sample = "Post-2018"),
   list(label = "ON RRP",          var = "ON_RRP",      data = "post", type = "drift",
        form = "Level", sample = "Post-2018"),
-
-  # Dollar sample levels
   list(label = "DXY",             var = "DXY",         data = "dollar", type = "drift",
        form = "Level", sample = "2008--2026"),
   list(label = "log(HYG/LQD)",    var = "log_HYG_LQD", data = "dollar", type = "drift",
@@ -108,9 +73,7 @@ level_tests <- list(
        form = "Level", sample = "2008--2026")
 )
 
-# Panel B: Transformed variables (confirm stationarity for analysis)
 trans_tests <- list(
-  # Post-2018 first differences
   list(label = "Baa spread",      var = "d_Baa",       data = "post", type = "none",
        form = "First diff.", sample = "Post-2018"),
   list(label = "Aaa spread",      var = "d_Aaa",       data = "post", type = "none",
@@ -123,8 +86,6 @@ trans_tests <- list(
        form = "First diff.", sample = "Post-2018"),
   list(label = "ON RRP",          var = "d_ON_RRP",    data = "post", type = "none",
        form = "First diff.", sample = "Post-2018"),
-
-  # Dollar sample returns / diffs
   list(label = "DXY",             var = "lr_DXY",          data = "dollar", type = "none",
        form = "Log return", sample = "2008--2026"),
   list(label = "HYG/LQD",         var = "d_log_HYG_LQD",  data = "dollar", type = "none",
@@ -134,8 +95,6 @@ trans_tests <- list(
   list(label = "EMB",             var = "lr_EMB",          data = "dollar", type = "none",
        form = "Log return", sample = "2008--2026")
 )
-
-# ── Run all tests ──────────────────────────────────────────────────────────
 
 run_all <- function(test_list) {
   do.call(rbind, lapply(test_list, function(t) {
@@ -165,12 +124,8 @@ print(panel_a, row.names = FALSE)
 cat("\n── Panel B: Transformed Variables ──\n")
 print(panel_b, row.names = FALSE)
 
-# ── Generate LaTeX table ──────────────────────────────────────────────────
-
-# Combine with a separator marker
 all_results <- rbind(panel_a, panel_b)
 
-# Format for LaTeX
 tbl <- all_results %>%
   select(Variable, Form, Sample, Lags, N, ADF_tau, CV_1, CV_5, CV_10, Stationary)
 
@@ -190,7 +145,6 @@ xt <- xtable(tbl,
   align = c("l", "l", "l", "l", "r", "r", "r", "r", "r", "r", "l")
 )
 
-# Custom print with panel headers
 sink(file.path(OUT_DIR, "table_adf_all.tex"))
 cat("\\begin{table}[H]\n")
 cat("\\centering\n")
