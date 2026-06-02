@@ -1,9 +1,3 @@
-##############################################################################
-##  Regenerate figures with fixes:
-##  1. Shorter histogram title (no cutoff)
-##  2. No titles/subtitles on rolling figures
-##############################################################################
-
 library(tidyverse)
 library(lmtest)
 library(sandwich)
@@ -15,8 +9,6 @@ setwd(WD)
 
 d <- read.csv("../data_master.csv")
 d$Date <- as.Date(d$Date)
-
-# ── 1. Fix SOFR-EFFR distribution figure ─────────────────────────────────
 
 d53 <- d[d$Date >= as.Date("2018-04-02") & !is.na(d$SOFR_EFFR), ]
 
@@ -40,8 +32,6 @@ text(as.Date("2020-03-01"), max(d53$SOFR_EFFR, na.rm=TRUE)*0.8, "COVID",
      col = "darkred", cex = 0.7, pos = 4)
 dev.off()
 cat("Fixed: fig_sofr_distribution.pdf\n")
-
-# ── Helper: rolling Granger with HAC ─────────────────────────────────────
 
 run_granger_hac <- function(data, x_var, y_var, lag_order) {
   dd <- data[complete.cases(data[, c(x_var, y_var)]), ]
@@ -88,7 +78,6 @@ roll_granger <- function(data, x_var, y_var, lag_order = 5, window = 400, step =
   data.frame(Date = as.Date(dates), p_value = pvals, stringsAsFactors = FALSE)
 }
 
-# ── ggplot theme ─────────────────────────────────────────────────────────
 
 theme_thesis <- theme_minimal(base_size = 12) +
   theme(
@@ -96,8 +85,6 @@ theme_thesis <- theme_minimal(base_size = 12) +
     plot.subtitle = element_blank(),
     legend.position = "bottom"
   )
-
-# ── 2. Rolling Granger: SOFR-EFFR -> Credit (Post-2018) ─────────────────
 
 cat("Computing rolling Granger: SOFR-EFFR -> credit spreads...\n")
 df_post <- d53
@@ -130,8 +117,6 @@ if (nrow(roll_a) > 0) {
   cat("Fixed: fig_a5_rolling_granger.pdf\n")
 }
 
-# ── 3. Rolling Granger: Quantity Channel (Post-2018) ─────────────────────
-
 cat("Computing rolling Granger: quantity channel...\n")
 
 roll_res_aaa <- roll_granger(df_post, "d_Reserves", "d_Aaa")
@@ -162,8 +147,6 @@ if (nrow(roll_qty) > 0) {
   ggsave("figures/fig_a6_rolling_granger_qty.pdf", p_qty, width = 10, height = 5)
   cat("Fixed: fig_a6_rolling_granger_qty.pdf\n")
 }
-
-# ── 4. Rolling correlation DXY (no title) ────────────────────────────────
 
 d54 <- d[!is.na(d$DXY) & !is.na(d$HYG) & !is.na(d$LQD) & !is.na(d$SHV) & !is.na(d$EMB), ]
 
@@ -205,8 +188,6 @@ legend("bottomleft",
        bg = "white")
 dev.off()
 cat("Fixed: fig_rolling_corr_dxy.pdf\n")
-
-# ── 5. Rolling Granger DXY -> credit (no title) ─────────────────────────
 
 cat("Computing rolling Granger: DXY -> credit measures (long sample)...\n")
 
