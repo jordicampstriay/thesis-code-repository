@@ -1,8 +1,3 @@
-##############################################################################
-##  Generate unified tables for Empirical Analysis
-##  ADF, data sources, correlation, SOFR distribution
-##############################################################################
-
 library(tseries)
 library(xtable)
 library(moments)
@@ -12,8 +7,6 @@ setwd(WD)
 
 d <- read.csv("../data_master.csv")
 d$Date <- as.Date(d$Date)
-
-# ── 1. Unified ADF table ──────────────────────────────────────────────────
 
 d53 <- d[d$Date >= as.Date("2018-04-02") & !is.na(d$SOFR_EFFR), ]
 d54 <- d[!is.na(d$DXY) & !is.na(d$HYG) & !is.na(d$LQD) & !is.na(d$SHV) & !is.na(d$EMB), ]
@@ -35,7 +28,6 @@ run_adf <- function(v, label, data, transform, sample_label) {
 
 adf_rows <- list()
 
-# Section 5.3 variables (post-2018)
 adf_rows[[1]]  <- run_adf("SOFR_EFFR", "SOFR--EFFR", d53, "Level", "Post-2018")
 adf_rows[[2]]  <- run_adf("Baa_spread", "Baa spread", d53, "Level", "Post-2018")
 adf_rows[[3]]  <- run_adf("Aaa_spread", "Aaa spread", d53, "Level", "Post-2018")
@@ -47,7 +39,6 @@ adf_rows[[8]]  <- run_adf("d_Reserves", "$\\Delta$Reserves", d53, "First diff.",
 adf_rows[[9]]  <- run_adf("d_TGA", "$\\Delta$TGA", d53, "First diff.", "Post-2018")
 adf_rows[[10]] <- run_adf("d_ON_RRP", "$\\Delta$ON RRP", d53, "First diff.", "Post-2018")
 
-# Section 5.4 variables (2008-2026)
 adf_rows[[11]] <- run_adf("lr_DXY", "$\\Delta\\log$ DXY", d54, "Log return", "2008--2026")
 adf_rows[[12]] <- run_adf("d_log_HYG_LQD", "$\\Delta\\log$(HYG/LQD)", d54, "Log return", "2008--2026")
 adf_rows[[13]] <- run_adf("d_log_HYG_SHV", "$\\Delta\\log$(HYG/SHV)", d54, "Log return", "2008--2026")
@@ -66,8 +57,6 @@ print(xt, file = "tables/table_adf_all.tex",
       include.rownames = FALSE, sanitize.text.function = identity,
       booktabs = TRUE, floating = TRUE, table.placement = "H",
       scalebox = 0.80, comment = FALSE)
-
-# ── 2. Data sources table ─────────────────────────────────────────────────
 
 sources <- data.frame(
   Variable = c("SOFR", "EFFR", "Baa corporate yield", "Aaa corporate yield",
@@ -106,8 +95,6 @@ print(xt2, file = "tables/table_data_sources.tex",
       booktabs = TRUE, floating = TRUE, table.placement = "H",
       scalebox = 0.82, comment = FALSE)
 
-# ── 3. Correlation matrix for 5.3 (post-2018) ────────────────────────────
-
 cor_vars <- c("SOFR_EFFR", "d_Baa", "d_Aaa", "d_Baa_Aaa",
               "d_Reserves", "d_TGA")
 cor_labels <- c("SOFR--EFFR", "$\\Delta$Baa", "$\\Delta$Aaa",
@@ -128,21 +115,17 @@ print(xt3, file = "tables/table_corr_post2018.tex",
       booktabs = TRUE, floating = TRUE, table.placement = "H",
       scalebox = 0.78, comment = FALSE)
 
-# ── 4. SOFR-EFFR distribution figure ─────────────────────────────────────
-
 pdf("figures/fig_sofr_distribution.pdf", width = 8, height = 3.5)
 par(mfrow = c(1, 2), mar = c(4, 4, 2.5, 1), mgp = c(2.5, 0.8, 0))
 
 sofr <- na.omit(d53$SOFR_EFFR)
 
-# Histogram
 hist(sofr, breaks = 100, col = "steelblue", border = "white",
      main = "(a) SOFR--EFFR Spread Distribution",
      xlab = "Spread (percentage points)", ylab = "Frequency",
      xlim = c(-0.15, 0.5))
 abline(v = 0, col = "red", lty = 2, lwd = 2)
 
-# Time series
 plot(d53$Date, d53$SOFR_EFFR, type = "l", col = "steelblue", lwd = 0.8,
      main = "(b) SOFR-EFFR Spread (2018-2026)",
      xlab = "", ylab = "Spread (pp)")
@@ -151,8 +134,6 @@ abline(v = as.Date("2020-03-01"), col = "darkred", lty = 3)
 text(as.Date("2020-03-01"), max(d53$SOFR_EFFR, na.rm=TRUE)*0.8, "COVID",
      col = "darkred", cex = 0.7, pos = 4)
 dev.off()
-
-# ── 5. Summary statistics for 5.3 ────────────────────────────────────────
 
 ss_vars <- c("SOFR_EFFR", "d_Baa", "d_Aaa", "d_Baa_Aaa",
              "d_Reserves", "d_TGA", "d_ON_RRP")
