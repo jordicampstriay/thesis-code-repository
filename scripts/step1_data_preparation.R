@@ -1,16 +1,4 @@
-###############################################################################
-#  STEP 1 — DATA PREPARATION (Sections 5.1 & 5.2)
-#  Thesis: "The Plumbing of Liquidity"
-#  Author: Jordi Camps Triay
-#  Last updated: 2026-05-11
-#
-#  Input : raw_data_thesis.csv       (exported from Thesis/RAW DATA.xlsx)
-#          cross_currency_basis.csv   (exported from Thesis/RAW DATA.xlsx)
-#  Output: data_master.csv, LaTeX tables (table_*.tex), PDF figures (fig_*.pdf)
-#          report_data_preparation.pdf  — comprehensive write-up
-###############################################################################
 
-# ── 0.  PACKAGES ─────────────────────────────────────────────────────────────
 required_pkgs <- c("readr", "dplyr", "tidyr", "zoo", "tseries", "ggplot2",
                    "scales", "corrplot", "xtable", "lubridate", "gridExtra",
                    "grDevices", "knitr")
@@ -27,10 +15,6 @@ cat("================================================================\n")
 cat("  STEP 1 — DATA PREPARATION\n")
 cat("  Working directory:", WD, "\n")
 cat("================================================================\n\n")
-
-###############################################################################
-#  PART A — DATA LOADING AND INSPECTION
-###############################################################################
 
 raw <- read_csv("raw_data_thesis.csv",
                 na = c("", "NA", "-", "#VALUE!"),
@@ -84,20 +68,10 @@ cat("=== DATA AVAILABILITY (raw) ===\n")
 print(availability, row.names = FALSE)
 cat("\n")
 
-###############################################################################
-#  PART B — SOFR PROXY ANALYSIS
-###############################################################################
-
 cat("================================================================\n")
 cat("  SOFR PROXY ANALYSIS\n")
 cat("================================================================\n\n")
 
-# The SOFR-EFFR spread in the raw data is constructed as:
-#   - SOFR - EFFR           when SOFR is available (Apr 2018 onwards)
-#   - GC_Repo - EFFR        when only the proxy is available (2003--Feb 2018)
-# There is a ~1 month gap: March 1--April 1, 2018.
-# Reference: Federal Reserve Board, "Historical Proxies for the Secured
-#   Overnight Financing Rate," FEDS Notes, July 15, 2019.
 
 n_sofr      <- sum(!is.na(raw$SOFR))
 n_gc_repo   <- sum(!is.na(raw$GC_Repo))
@@ -109,12 +83,7 @@ cat(sprintf("  GC Repo proxy:       %d obs  (May 2003 -- Feb 2018)\n", n_gc_repo
 cat(sprintf("  SOFR-EFFR (combined):%d obs\n", n_sofr_effr))
 cat(sprintf("  Gap (Mar 2018):      ~22 business days\n\n"))
 
-# Overlap period check (there is no overlap — proxy ends Feb 28, SOFR starts Apr 2)
-# The Fed note validates this proxy: the GC repo rate is the transaction-weighted
-# median rate on overnight Treasury general collateral repo, which is conceptually
-# identical to SOFR (SOFR is the broader, volume-weighted median).
 
-# Compare SOFR-EFFR vs TED spread where both exist
 both_avail <- raw %>%
   filter(!is.na(SOFR_EFFR) & !is.na(TED_spread))
 
@@ -128,17 +97,11 @@ if (nrow(both_avail) > 100) {
   cat("  when available. TED spread discontinued Jan 2022 (LIBOR cessation).\n\n")
 }
 
-# Decision: Use SOFR-EFFR (with proxy) as the primary funding spread for
-# the extended sample. TED spread used only for full-sample robustness
-# (2003--2022) as a second specification.
 
 cat("  DECISION: Use SOFR-EFFR (with GC Repo proxy) as primary funding spread.\n")
 cat("            Extended sample: May 2003 -- April 2026 (gap: March 2018).\n")
 cat("            TED spread: supplementary robustness (2003--Jan 2022).\n\n")
 
-###############################################################################
-#  PART C — DATA CLEANING
-###############################################################################
 
 cat("================================================================\n")
 cat("  DATA CLEANING\n")
@@ -165,10 +128,8 @@ n_dxy_zero <- sum(dxy_zero)
 df$DXY[dxy_zero] <- NA
 cat(sprintf("  Additional DXY zeros set to NA: %d rows\n", n_dxy_zero))
 
-# C3. Drop variables excluded from the analysis
-# SOFR, GC_Repo, EFFR — individual levels; we keep SOFR_EFFR (the spread)
+
 df$SOFR <- NULL; df$GC_Repo <- NULL; df$EFFR <- NULL
-# TGCR, BGCR — the BGCR-TGCR differential has 97% zeros, no variation
 df$TGCR <- NULL; df$BGCR <- NULL
 cat("  Dropped: SOFR, GC_Repo, EFFR (individual rate levels)\n")
 cat("  Dropped: TGCR, BGCR (spread would have 97% zeros)\n")
@@ -176,7 +137,6 @@ cat("  Dropped: TGCR, BGCR (spread would have 97% zeros)\n")
 cat(sprintf("\n  Remaining columns: %d\n", ncol(df)))
 cat(sprintf("  %s\n\n", paste(colnames(df), collapse = ", ")))
 
-# C4. Forward-fill weekly series
 weekly_cols <- c("Reserves", "TGA", "Fed_Assets", "Liq_Swaps")
 for (col in weekly_cols) {
   n_before <- sum(is.na(df[[col]]))
@@ -186,20 +146,14 @@ for (col in weekly_cols) {
 }
 cat("\n")
 
-###############################################################################
-#  PART D — CONSTRUCT DERIVED VARIABLES
-###############################################################################
-
 cat("================================================================\n")
 cat("  VARIABLE CONSTRUCTION\n")
 cat("================================================================\n\n")
 
-# D1. Baa-Aaa quality differential (positive = Baa wider than Aaa)
 df$Baa_Aaa <- df$Baa_spread - df$Aaa_spread
 df$Aaa_Baa <- NULL
 cat("  Created: Baa_Aaa = Baa_spread - Aaa_spread\n")
 
-# D2. First differences of quantity variables
 df <- df %>% mutate(
   d_Reserves   = c(NA, diff(Reserves)),
   d_TGA        = c(NA, diff(TGA)),
@@ -208,7 +162,6 @@ df <- df %>% mutate(
 )
 cat("  Created: d_Reserves, d_TGA, d_ON_RRP, d_Fed_Assets\n")
 
-# D3. First differences of credit spreads
 df <- df %>% mutate(
   d_Baa     = c(NA, diff(Baa_spread)),
   d_Aaa     = c(NA, diff(Aaa_spread)),
@@ -216,7 +169,6 @@ df <- df %>% mutate(
 )
 cat("  Created: d_Baa, d_Aaa, d_Baa_Aaa\n")
 
-# D4. Log-returns for price variables
 df <- df %>% mutate(
   lr_HYG = c(NA, diff(log(HYG))) * 100,
   lr_LQD = c(NA, diff(log(LQD))) * 100,
@@ -228,7 +180,6 @@ df <- df %>% mutate(
 )
 cat("  Created: lr_HYG, lr_LQD, lr_DXY, lr_TLT, lr_IEF, lr_SHV, lr_EMB\n")
 
-# D5. Risk appetite proxies
 df <- df %>% mutate(
   log_HYG_LQD   = log(HYG / LQD),
   d_log_HYG_LQD = c(NA, diff(log_HYG_LQD)),
@@ -237,21 +188,15 @@ df <- df %>% mutate(
 )
 cat("  Created: log_HYG_LQD, d_log_HYG_LQD, log_HYG_SHV, d_log_HYG_SHV\n\n")
 
-###############################################################################
-#  PART E — SAMPLE DEFINITIONS
-###############################################################################
 
 cat("================================================================\n")
 cat("  SAMPLE DEFINITIONS\n")
 cat("================================================================\n\n")
 
-# Extended sample: full coverage of SOFR-EFFR (with proxy)
 df_extended <- df %>% filter(Date >= as.Date("2003-05-01"))
 
-# Post-2018 sample: actual SOFR only
 df_post <- df %>% filter(Date >= as.Date("2018-04-02"))
 
-# Full-sample for TED spread robustness (TED ends Jan 2022)
 df_ted <- df %>% filter(Date >= as.Date("2003-05-01"),
                          Date <= as.Date("2022-01-21"))
 
@@ -265,14 +210,10 @@ cat(sprintf("  TED spread sample:                    %s to %s  (%d rows)\n",
             min(df_ted$Date), max(df_ted$Date), nrow(df_ted)))
 cat(sprintf("    Valid TED_spread: %d\n\n", sum(!is.na(df_ted$TED_spread))))
 
-###############################################################################
-#  PART F — SAVE MASTER DATA
-###############################################################################
 
 write.csv(df, "data_master.csv", row.names = FALSE)
 cat("  Saved: data_master.csv\n\n")
 
-# Also load cross-currency basis for descriptive analysis
 ccb <- read_csv("cross_currency_basis.csv",
                 col_names = c("Date", "AUD", "CHF", "EUR", "GBP", "JPY"),
                 skip = 1, show_col_types = FALSE)
@@ -281,14 +222,6 @@ ccb <- ccb %>% arrange(Date)
 cat(sprintf("  Cross-currency basis: %s to %s (%d obs)\n\n",
             min(ccb$Date), max(ccb$Date), nrow(ccb)))
 
-###############################################################################
-###############################################################################
-#                   DIAGNOSTIC TABLES & FIGURES
-###############################################################################
-###############################################################################
-
-
-# ── COMMON THEME ──────────────────────────────────────────────────────────────
 theme_thesis <- function(base_size = 11) {
   theme_minimal(base_size = base_size) %+replace%
     theme(
@@ -338,9 +271,6 @@ add_stress <- function(p) {
                 fill = "#FFCCCC", alpha = 0.35, inherit.aes = FALSE)
 }
 
-###############################################################################
-#  TABLE 1 — DATA SOURCES
-###############################################################################
 
 cat("================================================================\n")
 cat("  TABLE: DATA SOURCES\n")
@@ -452,10 +382,6 @@ print(source_xt, file = "table_data_sources.tex",
 cat("  Saved: table_data_sources.tex\n\n")
 
 
-###############################################################################
-#  TABLE 2 — DATA AVAILABILITY
-###############################################################################
-
 avail_clean_vars <- c("SOFR_EFFR", "TED_spread",
                        "Baa_spread", "Aaa_spread", "Baa_Aaa",
                        "DXY", "HYG", "LQD", "SHV", "EMB",
@@ -473,9 +399,6 @@ print(avail_xt, file = "table_data_availability.tex",
 cat("  Saved: table_data_availability.tex\n\n")
 
 
-###############################################################################
-#  TABLE 3 — SUMMARY STATISTICS
-###############################################################################
 
 cat("================================================================\n")
 cat("  SUMMARY STATISTICS\n")
@@ -509,17 +432,14 @@ summ_vars <- c("SOFR_EFFR", "TED_spread",
                "DXY", "HYG", "LQD", "SHV", "EMB", "MOVE",
                "Reserves", "TGA", "Fed_Assets", "ON_RRP")
 
-# Extended sample
 summ_ext <- compute_summary(df_extended, summ_vars)
 cat("--- Extended Sample ---\n")
 print(summ_ext, row.names = FALSE)
 
-# Post-2018
 summ_post <- compute_summary(df_post, summ_vars)
 cat("\n--- Post-2018 Sample ---\n")
 print(summ_post, row.names = FALSE)
 
-# Export both
 for (s in list(
   list(tbl = summ_ext,  f = "table_summary_extended.tex",
        cap = "Summary Statistics --- Extended Sample (May 2003 -- April 2026)",
@@ -539,10 +459,6 @@ for (s in list(
 cat("\n")
 
 
-###############################################################################
-#  TABLE 4 — ADF UNIT ROOT TESTS
-###############################################################################
-
 cat("================================================================\n")
 cat("  ADF UNIT ROOT TESTS\n")
 cat("================================================================\n\n")
@@ -560,7 +476,6 @@ adf_results <- data.frame(
 )
 
 for (v in adf_vars) {
-  # Choose appropriate sample
   if (v == "MOVE") {
     x_src <- df_post
     samp <- "Post-2018"
@@ -607,7 +522,6 @@ cat("  All unit-root vars stationary after differencing: ",
     all(adf_results$Decision_diff[adf_results$Decision_level == "Unit root"] == "Stationary"),
     "\n\n")
 
-# LaTeX
 adf_latex <- adf_results %>% select(-Sample)
 colnames(adf_latex) <- c("Variable", "$N$", "ADF (Level)", "$p$-value",
                           "Decision", "ADF ($\\Delta$)", "$p$-value ", "Decision ")
@@ -622,16 +536,10 @@ print(adf_xt, file = "table_adf_results.tex",
       scalebox = 0.80)
 cat("  Saved: table_adf_results.tex\n\n")
 
-
-###############################################################################
-#  TABLE 5 — CORRELATION MATRICES
-###############################################################################
-
 cat("================================================================\n")
 cat("  CORRELATION ANALYSIS\n")
 cat("================================================================\n\n")
 
-# 5a. Post-2018 first differences (VAR variables)
 corr_fd_vars <- c("SOFR_EFFR", "d_Reserves", "d_TGA", "d_ON_RRP",
                    "d_Baa", "d_Aaa", "d_Baa_Aaa")
 corr_fd <- df_post %>% select(all_of(corr_fd_vars)) %>% drop_na()
@@ -640,13 +548,11 @@ corr_fd_mat <- cor(corr_fd)
 cat("--- Post-2018 First Differences ---\n")
 print(round(corr_fd_mat, 3))
 
-# Key findings
 cat(sprintf("\n  SOFR_EFFR vs d_Baa: %.4f\n", corr_fd_mat["SOFR_EFFR", "d_Baa"]))
 cat(sprintf("  SOFR_EFFR vs d_Aaa: %.4f\n", corr_fd_mat["SOFR_EFFR", "d_Aaa"]))
 cat(sprintf("  d_Reserves vs d_TGA: %.4f\n", corr_fd_mat["d_Reserves", "d_TGA"]))
 cat("  >> Near-zero contemporaneous correlations: transmission is lagged.\n\n")
 
-# 5b. Extended sample with SOFR-EFFR proxy
 corr_ext_vars <- c("SOFR_EFFR", "d_Reserves", "d_TGA",
                     "d_Baa", "d_Aaa", "d_Baa_Aaa")
 corr_ext <- df_extended %>% select(all_of(corr_ext_vars)) %>% drop_na()
@@ -656,7 +562,6 @@ cat("--- Extended Sample (with SOFR proxy) ---\n")
 print(round(corr_ext_mat, 3))
 cat("\n")
 
-# 5c. TED spread sample
 corr_ted_vars <- c("TED_spread", "d_Reserves", "d_TGA",
                     "d_Baa", "d_Aaa", "d_Baa_Aaa")
 corr_ted <- df_ted %>% select(all_of(corr_ted_vars)) %>% drop_na()
@@ -666,7 +571,6 @@ cat("--- TED Spread Sample ---\n")
 print(round(corr_ted_mat, 3))
 cat("\n")
 
-# LaTeX — Post-2018 FD
 corr_fd_nice <- round(corr_fd_mat, 3)
 rownames(corr_fd_nice) <- colnames(corr_fd_nice) <- c(
   "SOFR-EFFR", "$\\Delta$Reserves", "$\\Delta$TGA", "$\\Delta$ON RRP",
@@ -682,7 +586,6 @@ print(corr_xt, file = "table_correlation_fd.tex",
       sanitize.rownames.function = identity, scalebox = 0.75)
 cat("  Saved: table_correlation_fd.tex\n\n")
 
-# LaTeX — Extended sample
 corr_ext_nice <- round(corr_ext_mat, 3)
 rownames(corr_ext_nice) <- colnames(corr_ext_nice) <- c(
   "SOFR-EFFR (proxy)", "$\\Delta$Reserves", "$\\Delta$TGA",
@@ -699,10 +602,6 @@ print(corr_ext_xt, file = "table_correlation_extended.tex",
 cat("  Saved: table_correlation_extended.tex\n\n")
 
 
-###############################################################################
-#  MULTICOLLINEARITY CHECK
-###############################################################################
-
 cat("================================================================\n")
 cat("  MULTICOLLINEARITY DIAGNOSTIC\n")
 cat("================================================================\n\n")
@@ -715,11 +614,6 @@ print(round(mc_cor, 4))
 max_off <- max(abs(mc_cor[upper.tri(mc_cor)]))
 cat(sprintf("\n  Max off-diagonal |r|: %.4f — %s\n\n",
             max_off, ifelse(max_off < 0.50, "no concern", "INVESTIGATE")))
-
-
-###############################################################################
-#  SOFR-EFFR DISTRIBUTION DIAGNOSTIC
-###############################################################################
 
 cat("================================================================\n")
 cat("  SOFR-EFFR DISTRIBUTION\n")
@@ -735,10 +629,6 @@ cat(sprintf("  Mean: %.4f | SD: %.4f | Skewness: %.2f\n",
             mean((se_clean - mean(se_clean))^3) / sd(se_clean)^3))
 cat("  >> Motivates regime-dependent analysis (Section 5.5)\n\n")
 
-
-###############################################################################
-#  CORRELATION HEAT MAP FIGURES
-###############################################################################
 
 cat("================================================================\n")
 cat("  HEAT MAP FIGURES\n")
@@ -770,15 +660,10 @@ dev.off()
 cat("  Saved: fig_corr_fd_extended.pdf\n\n")
 
 
-###############################################################################
-#  TIME SERIES PLOTS
-###############################################################################
-
 cat("================================================================\n")
 cat("  TIME SERIES PLOTS\n")
 cat("================================================================\n\n")
 
-# ── P1: SOFR-EFFR spread (extended sample with proxy) ──
 p1 <- ggplot(df_extended %>% filter(!is.na(SOFR_EFFR)),
              aes(x = Date, y = SOFR_EFFR * 100))
 p1 <- add_rec(p1)
@@ -797,7 +682,6 @@ p1 <- p1 +
   scale_x_date(date_breaks = "2 years", date_labels = "%Y", expand = c(0.01, 0)) +
   theme_thesis()
 
-# ── P2: SOFR-EFFR post-2018 only (with stress bands) ──
 p2 <- ggplot(df_post %>% filter(!is.na(SOFR_EFFR)),
              aes(x = Date, y = SOFR_EFFR * 100))
 p2 <- add_stress(p2)
@@ -811,7 +695,6 @@ p2 <- p2 +
   scale_x_date(date_breaks = "1 year", date_labels = "%Y", expand = c(0.01, 0)) +
   theme_thesis()
 
-# ── P3: Credit spreads ──
 p3_data <- df_extended %>%
   select(Date, Baa_spread, Aaa_spread) %>%
   pivot_longer(-Date, names_to = "S", values_to = "V") %>% filter(!is.na(V))
@@ -828,7 +711,6 @@ p3 <- p3 +
   scale_x_date(date_breaks = "2 years", date_labels = "%Y", expand = c(0.01, 0)) +
   theme_thesis()
 
-# ── P4: Baa-Aaa differential ──
 p4 <- ggplot(df_extended %>% filter(!is.na(Baa_Aaa)),
              aes(x = Date, y = Baa_Aaa))
 p4 <- add_rec(p4)
@@ -841,7 +723,6 @@ p4 <- p4 +
   scale_x_date(date_breaks = "2 years", date_labels = "%Y", expand = c(0.01, 0)) +
   theme_thesis()
 
-# ── P5: Reserves and TGA ──
 p5_data <- df_extended %>%
   filter(!is.na(Reserves)) %>%
   mutate(Reserves = Reserves / 1e6, TGA = TGA / 1e6) %>%
@@ -859,7 +740,6 @@ p5 <- p5 +
   scale_x_date(date_breaks = "2 years", date_labels = "%Y", expand = c(0.01, 0)) +
   theme_thesis()
 
-# ── P6: TED spread ──
 p6 <- ggplot(df_ted %>% filter(!is.na(TED_spread)),
              aes(x = Date, y = TED_spread * 100))
 p6 <- add_rec(p6)
@@ -872,7 +752,6 @@ p6 <- p6 +
   scale_x_date(date_breaks = "2 years", date_labels = "%Y", expand = c(0.01, 0)) +
   theme_thesis()
 
-# ── P7: ETF prices ──
 p7_data <- df_extended %>%
   select(Date, HYG, LQD) %>%
   pivot_longer(-Date, names_to = "S", values_to = "V") %>% filter(!is.na(V))
@@ -888,7 +767,6 @@ p7 <- p7 +
   scale_x_date(date_breaks = "2 years", date_labels = "%Y", expand = c(0.01, 0)) +
   theme_thesis()
 
-# ── P8: ON RRP ──
 p8 <- ggplot(df_extended %>% filter(!is.na(ON_RRP), Date >= as.Date("2013-01-01")),
              aes(x = Date, y = ON_RRP / 1e3)) +
   geom_line(color = COL_PURPLE, linewidth = 0.4, alpha = 0.85) +
@@ -899,7 +777,6 @@ p8 <- ggplot(df_extended %>% filter(!is.na(ON_RRP), Date >= as.Date("2013-01-01"
   scale_x_date(date_breaks = "2 years", date_labels = "%Y", expand = c(0.01, 0)) +
   theme_thesis()
 
-# ── P9: DXY ──
 p9 <- ggplot(df_extended %>% filter(!is.na(DXY)),
              aes(x = Date, y = DXY))
 p9 <- add_rec(p9)
@@ -912,7 +789,6 @@ p9 <- p9 +
   scale_x_date(date_breaks = "2 years", date_labels = "%Y", expand = c(0.01, 0)) +
   theme_thesis()
 
-# ── P10: Funding vs Credit overlay ──
 p10_data <- df_post %>% filter(!is.na(SOFR_EFFR) & !is.na(Baa_spread))
 p10 <- ggplot(p10_data)
 p10 <- add_stress(p10)
@@ -964,11 +840,6 @@ for (item in plot_list) {
 }
 cat("\n")
 
-
-###############################################################################
-#  ROLLING VOLATILITY
-###############################################################################
-
 df_vol <- df_extended %>%
   select(Date, d_Aaa, d_Baa) %>% filter(!is.na(d_Aaa) & !is.na(d_Baa))
 
@@ -998,9 +869,6 @@ ggsave("fig_ts_vol_ratio.pdf", p_vol, width = 10, height = 4.5, dpi = 300)
 cat("  Saved: fig_ts_vol_ratio.pdf\n\n")
 
 
-###############################################################################
-#  FINAL REPORT
-###############################################################################
 
 cat("================================================================\n")
 cat("  CLEANING REPORT\n")
