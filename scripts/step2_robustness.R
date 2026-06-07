@@ -1,20 +1,3 @@
-###############################################################################
-#  STEP 2 — ROBUSTNESS CHECKS & ECONOMETRIC DIAGNOSTICS
-#  Supplements step2_granger_enhanced.R
-#
-#  New computations:
-#    1. AIC/BIC optimal lag selection for each bivariate Granger pair
-#    2. Breusch-Godfrey serial correlation tests
-#    3. ARCH-LM heteroskedasticity tests
-#    4. HAC-robust (Newey-West) Granger F-tests
-#    5. Toda-Yamamoto procedure for key results
-#    6. COVID robustness (excluding Feb-May 2020)
-#    7. Rolling Granger for quantity channel (reserves -> Aaa)
-#
-#  OUTPUT: LaTeX tables, PDF figures, CSV results
-###############################################################################
-
-# ── 0. PACKAGES ────────────────────────────────────────────────────────────
 required_pkgs <- c("readr", "dplyr", "tidyr", "lmtest", "tseries",
                    "strucchange", "moments", "xtable", "ggplot2",
                    "scales", "zoo", "gridExtra", "sandwich")
@@ -38,7 +21,6 @@ theme_thesis <- theme_minimal(base_size = 11) +
     panel.grid.minor = element_blank()
   )
 
-# ── Post-2018 sample ──
 df_post <- df %>%
   filter(Date >= as.Date("2018-04-03")) %>%
   select(Date, SOFR_EFFR, d_Baa, d_Aaa, d_Baa_Aaa,
@@ -51,10 +33,6 @@ cat("================================================================\n\n")
 cat(sprintf("Post-2018 sample: %d observations (%s to %s)\n\n",
             nrow(df_post), min(df_post$Date), max(df_post$Date)))
 
-
-###############################################################################
-#  1. AIC/BIC OPTIMAL LAG SELECTION
-###############################################################################
 cat("── 1. AIC/BIC Lag Selection ──────────────────────────────────────\n")
 
 select_lag_ic <- function(data, x_name, y_name, max_lag = 15) {
@@ -80,13 +58,11 @@ select_lag_ic <- function(data, x_name, y_name, max_lag = 15) {
              N = n, stringsAsFactors = FALSE)
 }
 
-# Forward pairs (Post-2018)
 fwd_pairs <- expand.grid(
   X = c("SOFR_EFFR", "d_Reserves", "d_TGA", "d_ON_RRP"),
   Y = c("d_Baa", "d_Aaa", "d_Baa_Aaa"),
   stringsAsFactors = FALSE
 )
-# Reverse pairs
 rev_pairs <- expand.grid(
   X = c("d_Baa", "d_Aaa"),
   Y = c("SOFR_EFFR", "d_Reserves", "d_TGA"),
@@ -105,7 +81,6 @@ cat("AIC/BIC lag selection results:\n")
 print(lag_sel_all)
 write.csv(lag_sel_all, "results_lag_selection.csv", row.names = FALSE)
 
-# Run Granger at AIC-selected lags for key pairs
 run_granger_at_lag <- function(data, x_name, y_name, lag) {
   xy <- data %>% select(all_of(c(x_name, y_name))) %>% tidyr::drop_na()
   if (nrow(xy) < lag + 30) return(NULL)
@@ -122,7 +97,6 @@ run_granger_at_lag <- function(data, x_name, y_name, lag) {
   }, error = function(e) NULL)
 }
 
-# Key pairs at their AIC-selected lags
 key_pairs <- lag_sel[lag_sel$X %in% c("d_Reserves", "d_TGA") &
                       lag_sel$Y %in% c("d_Aaa", "d_Baa_Aaa"), ]
 gc_at_aic <- do.call(rbind, lapply(1:nrow(key_pairs), function(i) {
@@ -134,9 +108,6 @@ print(gc_at_aic)
 write.csv(gc_at_aic, "results_granger_aic_lag.csv", row.names = FALSE)
 
 
-###############################################################################
-#  2-3. RESIDUAL DIAGNOSTICS (Breusch-Godfrey + ARCH-LM)
-###############################################################################
 cat("\n── 2-3. Residual Diagnostics ──────────────────────────────────────\n")
 
 run_diagnostics <- function(data, x_name, y_name, lag, bg_order = 5,
@@ -154,10 +125,8 @@ run_diagnostics <- function(data, x_name, y_name, lag, bg_order = 5,
   X_mat$Y <- Y
   fit <- lm(Y ~ ., data = X_mat)
 
-  # Breusch-Godfrey
   bg <- bgtest(fit, order = bg_order)
 
-  # ARCH-LM (manual)
   resid2 <- residuals(fit)^2
   m <- length(resid2)
   arch_df <- data.frame(e2 = resid2[(arch_order+1):m])
@@ -182,7 +151,6 @@ run_diagnostics <- function(data, x_name, y_name, lag, bg_order = 5,
   )
 }
 
-# Run on key significant regressions
 diag_pairs <- list(
   c("d_Reserves", "d_Aaa", 1),
   c("d_Reserves", "d_Aaa", 5),
@@ -203,10 +171,6 @@ cat("Residual diagnostics:\n")
 print(diag_results)
 write.csv(diag_results, "results_residual_diagnostics.csv", row.names = FALSE)
 
-
-###############################################################################
-#  4. HAC-ROBUST (NEWEY-WEST) GRANGER F-TESTS
-###############################################################################
 cat("\n── 4. HAC-Robust Granger Tests ────────────────────────────────────\n")
 
 run_granger_hac <- function(data, x_name, y_name, lag) {
@@ -222,21 +186,16 @@ run_granger_hac <- function(data, x_name, y_name, lag) {
   }
   X_mat$Y <- Y
 
-  # Unrestricted
   fit_u <- lm(Y ~ ., data = X_mat)
-  # Restricted (only Y lags)
   y_lag_cols <- grep("^Y_lag", names(X_mat), value = TRUE)
   fit_r <- lm(as.formula(paste("Y ~", paste(y_lag_cols, collapse = " + "))),
                data = X_mat)
 
-  # Newey-West HAC covariance
   nw_vcov <- sandwich::NeweyWest(fit_u, lag = lag, prewhite = FALSE)
 
-  # Wald test with HAC
   wald <- lmtest::waldtest(fit_r, fit_u, vcov = nw_vcov)
   f_val <- wald$F[2]; p_val <- wald$`Pr(>F)`[2]
 
-  # Also get classical F for comparison
   gt <- grangertest(as.formula(paste(y_name, "~", x_name)),
                      order = lag, data = xy)
   f_class <- gt$F[2]; p_class <- gt$`Pr(>F)`[2]
@@ -260,7 +219,6 @@ run_granger_hac <- function(data, x_name, y_name, lag) {
   )
 }
 
-# Run on all key pairs
 hac_pairs <- list(
   c("d_Reserves", "d_Aaa", 1),
   c("d_Reserves", "d_Aaa", 5),
@@ -283,75 +241,6 @@ print(hac_results)
 write.csv(hac_results, "results_granger_hac.csv", row.names = FALSE)
 
 
-###############################################################################
-#  5. TODA-YAMAMOTO PROCEDURE
-###############################################################################
-cat("\n── 5. Toda-Yamamoto Procedure ─────────────────────────────────────\n")
-
-run_toda_yamamoto <- function(data, x_name, y_name, lag, d_max = 1) {
-  xy <- data %>% select(all_of(c(x_name, y_name))) %>% tidyr::drop_na()
-  n <- nrow(xy)
-  p_total <- lag + d_max
-  if (n < p_total + 50) return(NULL)
-
-  Y <- xy[[y_name]][(p_total+1):n]
-  X_mat <- data.frame(row.names = 1:length(Y))
-  for (i in 1:p_total) {
-    X_mat[[paste0("Y_lag", i)]] <- xy[[y_name]][(p_total+1-i):(n-i)]
-    X_mat[[paste0("X_lag", i)]] <- xy[[x_name]][(p_total+1-i):(n-i)]
-  }
-  X_mat$Y <- Y
-
-  # Unrestricted: all p + d_max lags
-  fit_u <- lm(Y ~ ., data = X_mat)
-
-  # Restricted: drop only X_lag1..X_lag{p} (keep X_lag{p+1}..X_lag{p+d_max})
-  x_test_cols <- paste0("X_lag", 1:lag)
-  keep_cols <- setdiff(names(X_mat)[names(X_mat) != "Y"], x_test_cols)
-  fit_r <- lm(as.formula(paste("Y ~", paste(keep_cols, collapse = " + "))),
-               data = X_mat)
-
-  wald <- anova(fit_r, fit_u)
-  f_val <- wald$F[2]; p_val <- wald$`Pr(>F)`[2]
-
-  # Chi-square version
-  chi2 <- f_val * lag
-  chi2_p <- 1 - pchisq(chi2, df = lag)
-
-  sig <- ifelse(chi2_p < 0.01, "***", ifelse(chi2_p < 0.05, "**",
-         ifelse(chi2_p < 0.10, "*", "")))
-
-  data.frame(
-    Direction = paste0(x_name, " -> ", y_name),
-    p = lag, d_max = d_max, N = nrow(X_mat),
-    Chi2 = round(chi2, 3), Chi2_p = round(chi2_p, 4),
-    F_equiv = round(f_val, 3), F_p = round(p_val, 4),
-    Sig = sig, stringsAsFactors = FALSE
-  )
-}
-
-ty_pairs <- list(
-  c("d_Reserves", "d_Aaa", 1),
-  c("d_Reserves", "d_Aaa", 5),
-  c("d_Reserves", "d_Aaa", 10),
-  c("d_Reserves", "d_Baa_Aaa", 1),
-  c("d_Reserves", "d_Baa_Aaa", 5),
-  c("d_TGA", "d_Baa_Aaa", 5),
-  c("d_TGA", "d_Baa_Aaa", 10)
-)
-
-ty_results <- do.call(rbind, lapply(ty_pairs, function(p) {
-  run_toda_yamamoto(df_post, p[1], p[2], as.integer(p[3]))
-}))
-
-cat("Toda-Yamamoto results:\n")
-print(ty_results)
-write.csv(ty_results, "results_toda_yamamoto.csv", row.names = FALSE)
-
-
-###############################################################################
-#  6. COVID ROBUSTNESS
-###############################################################################
 cat("\n── 6. COVID Robustness ────────────────────────────────────────────\n")
 
 df_post_nocovid <- df_post %>%
@@ -393,7 +282,6 @@ covid_pairs <- list(
   c("SOFR_EFFR", "d_Aaa", 10)
 )
 
-# Full sample results for comparison
 gc_full <- do.call(rbind, lapply(covid_pairs, function(p) {
   r <- run_granger_simple(df_post, p[1], p[2], as.integer(p[3]))
   if (!is.null(r)) r$Sample <- "Full"
@@ -413,9 +301,6 @@ print(covid_comparison[covid_comparison$X == "d_Reserves" &
 write.csv(covid_comparison, "results_covid_robustness.csv", row.names = FALSE)
 
 
-###############################################################################
-#  7. ROLLING GRANGER — QUANTITY CHANNEL
-###############################################################################
 cat("\n── 7. Rolling Granger: Quantity Channel ───────────────────────────\n")
 
 roll_granger <- function(data, x_name, y_name, lag, window = 400,
@@ -474,9 +359,6 @@ ggsave("fig_a6_rolling_granger_qty.pdf", p_roll_qty,
 cat("Saved: fig_a6_rolling_granger_qty.pdf\n")
 
 
-###############################################################################
-#  8. GENERATE LaTeX TABLES
-###############################################################################
 cat("\n── 8. Generating LaTeX Tables ─────────────────────────────────────\n")
 
 clean_name <- function(x) {
@@ -499,7 +381,6 @@ clean_name <- function(x) {
   x
 }
 
-# Table: Lag selection
 lag_tbl <- lag_sel_all
 lag_tbl$X <- clean_name(lag_tbl$X)
 lag_tbl$Y <- clean_name(lag_tbl$Y)
@@ -515,7 +396,6 @@ print(xt_lag, file = "table_lag_selection.tex",
       sanitize.colnames.function = identity,
       scalebox = 0.82, comment = FALSE)
 
-# Table: Residual diagnostics
 diag_tbl <- diag_results
 diag_tbl$Direction <- clean_name(diag_tbl$Direction)
 colnames(diag_tbl) <- c("Direction", "Lag", "BG stat", "BG $p$",
@@ -531,7 +411,6 @@ print(xt_diag, file = "table_residual_diagnostics.tex",
       sanitize.colnames.function = identity,
       scalebox = 0.78, comment = FALSE)
 
-# Table: HAC-robust comparison
 hac_tbl <- hac_results
 hac_tbl$Direction <- clean_name(hac_tbl$Direction)
 colnames(hac_tbl) <- c("Direction", "Lag", "$N$",
@@ -548,24 +427,7 @@ print(xt_hac, file = "table_granger_hac.tex",
       sanitize.colnames.function = identity,
       scalebox = 0.72, comment = FALSE)
 
-# Table: Toda-Yamamoto
-ty_tbl <- ty_results
-ty_tbl$Direction <- clean_name(ty_tbl$Direction)
-colnames(ty_tbl) <- c("Direction", "$p$", "$d_{\\max}$", "$N$",
-                        "$\\chi^2$", "$\\chi^2$ $p$",
-                        "$F$", "$F$ $p$", "")
-xt_ty <- xtable(ty_tbl,
-  caption = "Toda-Yamamoto Granger Non-Causality Tests ($d_{\\max} = 1$)",
-  label = "tab:toda_yamamoto",
-  digits = c(0, 0, 0, 0, 0, 3, 4, 3, 4, 0))
-print(xt_ty, file = "table_toda_yamamoto.tex",
-      include.rownames = FALSE, booktabs = TRUE,
-      caption.placement = "top", table.placement = "H",
-      sanitize.text.function = identity,
-      sanitize.colnames.function = identity,
-      scalebox = 0.78, comment = FALSE)
 
-# Table: COVID robustness
 covid_tbl <- covid_comparison
 covid_tbl$Direction <- clean_name(paste0(covid_tbl$X, " -> ", covid_tbl$Y))
 covid_tbl <- covid_tbl[, c("Sample", "Direction", "Lag", "N",
@@ -583,7 +445,6 @@ print(xt_covid, file = "table_covid_robustness.tex",
       sanitize.colnames.function = identity,
       scalebox = 0.70, comment = FALSE)
 
-# Table: SOFR-EFFR only (Battery 1 — fixing table duplication)
 fwd_all <- read.csv("results_granger_post2018.csv")
 fwd_price <- fwd_all[fwd_all$Type == "Forward" & fwd_all$X == "SOFR_EFFR", ]
 fwd_price$Direction <- paste0(clean_name(fwd_price$X), " $\\rightarrow$ ",
