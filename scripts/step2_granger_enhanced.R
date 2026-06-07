@@ -1,45 +1,3 @@
-###############################################################################
-#  STEP 2 (ENHANCED) — GRANGER CAUSALITY WITH STRUCTURAL BREAK ANALYSIS
-#  Thesis: "Beyond Interest Rates: Liquidity Mechanics and Risk Appetite
-#           in the Financial System"
-#  Author: Jordi Camps Triay
-#  Date: 2026-05-17
-#
-#  STRUCTURE:
-#    Part A — Post-2018 Sample (SOFR-EFFR, Reserves, TGA, ON RRP)
-#      A1. Summary statistics & ADF
-#      A2. Granger causality (forward + reverse)
-#      A3. Chow test at midpoint + SupF endogenous break
-#      A4. Time-series and diagnostic plots
-#
-#    Part B — TED Spread Sample (2003-2022)
-#      B1. Summary statistics & ADF
-#      B2. Granger causality (forward + reverse)
-#      B3. Structural break at Jan 2015 (Chow + SupF)
-#      B4. Subsample Granger: pre-2015 vs post-2015
-#      B5. Time-series and diagnostic plots
-#
-#    Part C — Comparison and synthesis tables
-#
-#  INPUT:  data_master.csv (from Step 1)
-#  OUTPUT: LaTeX tables, PDF figures, CSV results
-#
-#  NOTES:
-#  - The 2003-2026 extended sample using SOFR proxy is DROPPED from the
-#    thesis. The proxy (PD Survey Rate) differs from actual SOFR in
-#    construction (mean vs median), coverage (GC-only vs bilateral), and
-#    exhibits a structural break at 2015 (FRBNY FEDS Note, Anbil et al. 2019).
-#  - The TED spread is used as an independent robustness check, explicitly
-#    acknowledging it measures unsecured (LIBOR-based) funding costs, not
-#    secured (repo) funding.
-#  - Zero-value observations in TED spread (89 days) and SOFR-EFFR (228 days)
-#    are genuine data points (spread = 0 when rates coincide), not missing
-#    values. They are retained in the analysis.
-#  - Forward-filled weekly series (Reserves, TGA) introduce measurement error;
-#    zeros in d_Reserves/d_TGA on non-release days are an artifact of this.
-###############################################################################
-
-# ── 0. PACKAGES ─────────────────────────────────────────────────────────────
 required_pkgs <- c("readr", "dplyr", "tidyr", "lmtest", "tseries", "strucchange",
                    "moments", "xtable", "ggplot2", "scales", "zoo", "gridExtra")
 for (p in required_pkgs) {
@@ -51,7 +9,6 @@ for (p in required_pkgs) {
 WD <- "/Users/jordi/Downloads/University/TFG/Data/Thesis/step2_granger_enhanced"
 setwd(WD)
 
-# Load from parent directory
 df <- read_csv("../data_master.csv", show_col_types = FALSE)
 df$Date <- as.Date(df$Date)
 
@@ -59,7 +16,6 @@ cat("================================================================\n")
 cat("  STEP 2 (ENHANCED) — GRANGER CAUSALITY + STRUCTURAL BREAKS\n")
 cat("================================================================\n\n")
 
-# ── Plot theme ──
 theme_thesis <- theme_minimal(base_size = 11) +
   theme(
     plot.title    = element_text(face = "bold", size = 12),
@@ -67,11 +23,6 @@ theme_thesis <- theme_minimal(base_size = 11) +
     legend.position = "bottom",
     panel.grid.minor = element_blank()
   )
-
-
-###############################################################################
-#  HELPER FUNCTIONS
-###############################################################################
 
 run_granger <- function(data, x_name, y_name, lags = c(1, 5, 10),
                          min_obs = 100) {
@@ -228,7 +179,6 @@ run_supf <- function(data, x_name, y_name, lag) {
   })
 }
 
-# Rolling Granger p-value
 roll_granger <- function(data, x_name, y_name, lag, window = 500, step = 20) {
   xy <- data %>%
     select(Date, all_of(c(x_name, y_name))) %>%
@@ -254,11 +204,6 @@ roll_granger <- function(data, x_name, y_name, lag, window = 500, step = 20) {
 }
 
 
-###############################################################################
-###############################################################################
-#                     PART A — POST-2018 SAMPLE (SOFR-EFFR)
-###############################################################################
-###############################################################################
 
 cat("\n================================================================\n")
 cat("  PART A: POST-2018 SAMPLE (SOFR-EFFR)\n")
@@ -274,8 +219,6 @@ cat(sprintf("  Valid SOFR-EFFR: %d | NA: %d | Zeros: %d\n\n",
             sum(df_post$SOFR_EFFR == 0, na.rm = TRUE)))
 
 
-# ── A1. Summary Statistics ──
-
 a_vars <- c("SOFR_EFFR", "d_Reserves", "d_TGA", "d_ON_RRP",
             "d_Baa", "d_Aaa", "d_Baa_Aaa")
 
@@ -285,7 +228,6 @@ cat("Summary statistics:\n")
 print(stats_a %>% select(Variable, N, Mean, SD, Skewness, Kurtosis), row.names = FALSE)
 cat("\n")
 
-# ADF tests
 adf_a <- data.frame()
 for (v in a_vars) {
   adf_a <- rbind(adf_a, run_adf(df_post[[v]], v, "Post-2018"))
@@ -295,13 +237,10 @@ print(adf_a, row.names = FALSE)
 cat("\n")
 
 
-# ── A2. Granger Causality ──
-
 cat("================================================================\n")
 cat("  A2: GRANGER CAUSALITY (POST-2018)\n")
 cat("================================================================\n\n")
 
-# Forward: funding → credit
 fwd_pairs_a <- list(
   c("SOFR_EFFR", "d_Baa"), c("SOFR_EFFR", "d_Aaa"), c("SOFR_EFFR", "d_Baa_Aaa"),
   c("d_Reserves", "d_Baa"), c("d_Reserves", "d_Aaa"), c("d_Reserves", "d_Baa_Aaa"),
@@ -309,7 +248,6 @@ fwd_pairs_a <- list(
   c("d_ON_RRP", "d_Baa"), c("d_ON_RRP", "d_Aaa"), c("d_ON_RRP", "d_Baa_Aaa")
 )
 
-# Reverse: credit → funding
 rev_pairs_a <- list(
   c("d_Baa", "SOFR_EFFR"), c("d_Aaa", "SOFR_EFFR"),
   c("d_Baa", "d_Reserves"), c("d_Aaa", "d_Reserves"),
@@ -337,13 +275,10 @@ print(gc_rev_a %>% select(X, Y, Lag, N, F_stat, p_value, Sig), row.names = FALSE
 cat("\n")
 
 
-# ── A3. Structural Break Tests (Post-2018) ──
-
 cat("================================================================\n")
 cat("  A3: STRUCTURAL BREAK TESTS (POST-2018)\n")
 cat("================================================================\n\n")
 
-# Chow at midpoint
 chow_a <- data.frame()
 all_pairs_a <- c(fwd_pairs_a, rev_pairs_a)
 for (pair in all_pairs_a) {
@@ -360,7 +295,6 @@ cat("Chow test at sample midpoint (~Apr 2022):\n\n")
 print(chow_a, row.names = FALSE)
 cat(sprintf("\nSignificant at 5%%: %d / %d\n\n", sum(chow_a$p_value < 0.05), nrow(chow_a)))
 
-# Chow at March 2020 (COVID)
 cat("Chow test at March 2020 (COVID crisis):\n\n")
 chow_a_covid <- data.frame()
 for (pair in all_pairs_a) {
@@ -372,7 +306,6 @@ for (pair in all_pairs_a) {
 print(chow_a_covid, row.names = FALSE)
 cat(sprintf("\nSignificant at 5%%: %d / %d\n\n", sum(chow_a_covid$p_value < 0.05), nrow(chow_a_covid)))
 
-# SupF (endogenous break)
 cat("SupF test (endogenous break detection):\n\n")
 supf_a <- data.frame()
 for (pair in fwd_pairs_a) {
@@ -385,16 +318,12 @@ print(supf_a, row.names = FALSE)
 cat(sprintf("\nSupF significant at 5%%: %d / %d\n\n", sum(supf_a$p_value < 0.05), nrow(supf_a)))
 
 
-# ── A4. Figures (Post-2018) ──
-
 cat("================================================================\n")
 cat("  A4: FIGURES (POST-2018)\n")
 cat("================================================================\n\n")
 
-# Clean plot data: remove NA but keep zeros (they are real)
 df_plot_a <- df_post %>% filter(!is.na(SOFR_EFFR))
 
-# Fig A1: SOFR-EFFR time series
 p_a1 <- ggplot(df_plot_a, aes(x = Date, y = SOFR_EFFR * 100)) +
   geom_line(color = "steelblue", linewidth = 0.4) +
   geom_vline(xintercept = as.Date("2020-03-15"), linetype = "dashed",
@@ -408,7 +337,6 @@ p_a1 <- ggplot(df_plot_a, aes(x = Date, y = SOFR_EFFR * 100)) +
 ggsave("fig_a1_sofr_effr.pdf", p_a1, width = 10, height = 5)
 cat("  Saved: fig_a1_sofr_effr.pdf\n")
 
-# Fig A2: Credit spreads (clean — remove NA days, not zero-spread days)
 df_credit_a <- df_post %>%
   filter(!is.na(Baa_spread) & !is.na(Aaa_spread)) %>%
   select(Date, Baa_spread, Aaa_spread) %>%
@@ -427,7 +355,6 @@ p_a2 <- ggplot(df_credit_a, aes(x = Date, y = Spread, color = Variable)) +
 ggsave("fig_a2_credit_spreads.pdf", p_a2, width = 10, height = 5)
 cat("  Saved: fig_a2_credit_spreads.pdf\n")
 
-# Fig A3: Reserves & TGA (clean)
 df_qty_a <- df_post %>%
   filter(!is.na(Reserves)) %>%
   select(Date, Reserves, TGA) %>%
@@ -446,7 +373,6 @@ p_a3 <- ggplot(df_qty_a, aes(x = Date, y = Trillions, color = Variable)) +
 ggsave("fig_a3_reserves_tga.pdf", p_a3, width = 10, height = 5)
 cat("  Saved: fig_a3_reserves_tga.pdf\n")
 
-# Fig A4: ON RRP (clean)
 df_onrrp <- df_post %>%
   filter(!is.na(ON_RRP))
 
@@ -459,7 +385,6 @@ p_a4 <- ggplot(df_onrrp, aes(x = Date, y = ON_RRP)) +
 ggsave("fig_a4_on_rrp.pdf", p_a4, width = 10, height = 5)
 cat("  Saved: fig_a4_on_rrp.pdf\n")
 
-# Fig A5: Rolling Granger p-values (Post-2018)
 cat("  Computing rolling Granger p-values (post-2018)...\n")
 
 roll_a_baa <- roll_granger(df_post, "SOFR_EFFR", "d_Baa", lag = 5, window = 400, step = 15)
@@ -489,12 +414,6 @@ if (nrow(roll_a) > 0) {
 }
 
 
-###############################################################################
-###############################################################################
-#                     PART B — TED SPREAD SAMPLE (2003-2022)
-###############################################################################
-###############################################################################
-
 cat("\n\n================================================================\n")
 cat("  PART B: TED SPREAD SAMPLE (2003-2022)\n")
 cat("================================================================\n\n")
@@ -513,8 +432,6 @@ cat(sprintf("  Post-2015:        %s to %s (%d obs)\n\n",
             min(df_post_b$Date), max(df_post_b$Date), nrow(df_post_b)))
 
 
-# ── B1. Summary Statistics ──
-
 b_vars <- c("TED_spread", "d_Reserves", "d_TGA", "d_Baa", "d_Aaa", "d_Baa_Aaa")
 
 stats_b_full <- compute_stats(df_ted, b_vars, "Full (2003-2022)")
@@ -527,7 +444,6 @@ print(stats_b %>% select(Period, Variable, N, Mean, SD, Skewness, Kurtosis),
       row.names = FALSE)
 cat("\n")
 
-# ADF tests
 adf_b <- data.frame()
 for (v in b_vars) {
   adf_b <- rbind(adf_b,
@@ -539,8 +455,6 @@ cat("ADF results:\n")
 print(adf_b, row.names = FALSE)
 cat("\n")
 
-
-# ── B2. Granger Causality (Full + Subsamples) ──
 
 cat("================================================================\n")
 cat("  B2: GRANGER CAUSALITY (TED SPREAD)\n")
@@ -560,7 +474,6 @@ rev_pairs_b <- list(
 
 all_pairs_b <- c(fwd_pairs_b, rev_pairs_b)
 
-# Run on three samples
 run_all_pairs <- function(data, pairs, label) {
   res <- data.frame()
   for (pair in pairs) {
@@ -576,14 +489,12 @@ gc_b_post <- run_all_pairs(df_post_b, all_pairs_b, "Post-2015 (2015-2022)")
 
 gc_b <- bind_rows(gc_b_full, gc_b_pre, gc_b_post)
 
-# Print price channel comparison
 cat("TED SPREAD -> CREDIT SPREADS (comparison):\n")
 print(gc_b %>% filter(X == "TED_spread") %>%
         select(Period, Y, Lag, N, F_stat, p_value, Sig) %>%
         arrange(Y, Lag, Period), row.names = FALSE)
 cat("\n")
 
-# Print quantity comparison
 cat("QUANTITIES -> CREDIT SPREADS (comparison):\n")
 print(gc_b %>% filter(X %in% c("d_Reserves", "d_TGA"),
                        Y %in% c("d_Baa", "d_Aaa", "d_Baa_Aaa")) %>%
@@ -592,13 +503,10 @@ print(gc_b %>% filter(X %in% c("d_Reserves", "d_TGA"),
 cat("\n")
 
 
-# ── B3. Structural Break Tests ──
-
 cat("================================================================\n")
 cat("  B3: STRUCTURAL BREAK TESTS (TED SAMPLE)\n")
 cat("================================================================\n\n")
 
-# Chow at Jan 2015
 chow_b <- data.frame()
 for (pair in all_pairs_b) {
   for (lag in c(1, 5, 10)) {
@@ -611,7 +519,6 @@ cat("Chow test at January 2015:\n\n")
 print(chow_b, row.names = FALSE)
 cat(sprintf("\nSignificant at 5%%: %d / %d\n\n", sum(chow_b$p_value < 0.05), nrow(chow_b)))
 
-# SupF (endogenous break)
 supf_b <- data.frame()
 for (pair in fwd_pairs_b) {
   for (lag in c(1, 5, 10)) {
@@ -624,10 +531,6 @@ cat("SupF test (endogenous break):\n\n")
 print(supf_b, row.names = FALSE)
 cat(sprintf("\nSupF significant at 5%%: %d / %d\n\n", sum(supf_b$p_value < 0.05), nrow(supf_b)))
 
-# ── Endogenous break-date identification via breakpoints() ──
-# The SupF test confirms a break exists but does NOT identify the date.
-# We use strucchange::breakpoints() to find the data-optimal break date
-# for each key specification and verify it aligns with the a priori 2015 choice.
 
 cat("Endogenous break-date identification (breakpoints):\n\n")
 
@@ -676,10 +579,8 @@ cat(sprintf("\nBreak dates falling in 2014-2015: %d / %d\n",
 cat(sprintf("Break dates falling in 2013-2016: %d / %d\n\n",
             sum(bp_results$Break_year %in% c("2013", "2014", "2015", "2016")), nrow(bp_results)))
 
-# Save endogenous breakpoint results
 write.csv(bp_results, "results_endogenous_breakpoints.csv", row.names = FALSE)
 
-# Generate LaTeX table
 bp_clean <- bp_results
 bp_clean$Direction <- gsub("_", "\\\\_", bp_clean$Direction)
 bp_clean$Direction <- gsub("TED\\\\_spread", "TED", bp_clean$Direction)
@@ -699,10 +600,9 @@ print(bp_tex, file = "table_endogenous_breakpoints.tex",
 cat("  Saved: table_endogenous_breakpoints.tex\n")
 cat("  Saved: results_endogenous_breakpoints.csv\n\n")
 
-# Chow at GFC peak (Sep 2008)
 cat("Chow test at September 2008 (GFC peak):\n\n")
 chow_b_gfc <- data.frame()
-for (pair in fwd_pairs_b[1:3]) {  # TED spread pairs only
+for (pair in fwd_pairs_b[1:3]) { 
   for (lag in c(1, 5, 10)) {
     res <- run_chow(df_ted, pair[1], pair[2], lag, "2008-09-15")
     if (!is.null(res)) chow_b_gfc <- rbind(chow_b_gfc, res)
@@ -712,13 +612,10 @@ print(chow_b_gfc, row.names = FALSE)
 cat("\n")
 
 
-# ── B4. Figures (TED Spread) ──
-
 cat("================================================================\n")
 cat("  B4: FIGURES (TED SPREAD)\n")
 cat("================================================================\n\n")
 
-# Fig B1: TED spread with both break dates
 p_b1 <- ggplot(df_ted, aes(x = Date, y = TED_spread)) +
   geom_line(color = "steelblue", linewidth = 0.35) +
   geom_vline(xintercept = as.Date("2008-09-15"), linetype = "dotted",
@@ -736,7 +633,6 @@ p_b1 <- ggplot(df_ted, aes(x = Date, y = TED_spread)) +
 ggsave("fig_b1_ted_spread.pdf", p_b1, width = 10, height = 5)
 cat("  Saved: fig_b1_ted_spread.pdf\n")
 
-# Fig B2: Credit spreads full sample
 df_credit_b <- df_ted %>%
   filter(!is.na(Baa_spread) & !is.na(Aaa_spread)) %>%
   select(Date, Baa_spread, Aaa_spread) %>%
@@ -757,7 +653,6 @@ p_b2 <- ggplot(df_credit_b, aes(x = Date, y = Spread, color = Variable)) +
 ggsave("fig_b2_credit_spreads_ted.pdf", p_b2, width = 10, height = 5)
 cat("  Saved: fig_b2_credit_spreads_ted.pdf\n")
 
-# Fig B3: TED density comparison
 df_dens_b <- bind_rows(
   df_pre %>% mutate(Period = "Pre-2015") %>% select(Period, TED_spread),
   df_post_b %>% mutate(Period = "Post-2015") %>% select(Period, TED_spread)
@@ -773,7 +668,6 @@ p_b3 <- ggplot(df_dens_b, aes(x = TED_spread, fill = Period)) +
 ggsave("fig_b3_density_ted.pdf", p_b3, width = 8, height = 5)
 cat("  Saved: fig_b3_density_ted.pdf\n")
 
-# Fig B4: Rolling Granger p-values (TED sample)
 cat("  Computing rolling Granger p-values (TED sample)...\n")
 
 roll_b_baa <- roll_granger(df_ted, "TED_spread", "d_Baa", lag = 5, window = 500, step = 20)
@@ -805,7 +699,6 @@ if (nrow(roll_b) > 0) {
   cat("  Saved: fig_b4_rolling_granger_ted.pdf\n")
 }
 
-# Fig B5: Reserves with regime annotations
 df_res_b <- df_ted %>% filter(!is.na(Reserves))
 p_b5 <- ggplot(df_res_b, aes(x = Date, y = Reserves / 1e6)) +
   geom_line(color = "darkgreen", linewidth = 0.4) +
@@ -822,7 +715,6 @@ p_b5 <- ggplot(df_res_b, aes(x = Date, y = Reserves / 1e6)) +
 ggsave("fig_b5_reserves_ted.pdf", p_b5, width = 10, height = 5)
 cat("  Saved: fig_b5_reserves_ted.pdf\n")
 
-# Fig B6: F-stat comparison bar chart (lag 5)
 bar_b <- gc_b %>%
   filter(X == "TED_spread", Lag == 5) %>%
   mutate(Period = factor(Period, levels = c("Full (2003-2022)",
@@ -846,17 +738,10 @@ ggsave("fig_b6_fstat_comparison.pdf", p_b6, width = 9, height = 5.5)
 cat("  Saved: fig_b6_fstat_comparison.pdf\n")
 
 
-###############################################################################
-###############################################################################
-#                     PART C — LATEX TABLES
-###############################################################################
-###############################################################################
-
 cat("\n\n================================================================\n")
 cat("  PART C: LATEX TABLES\n")
 cat("================================================================\n\n")
 
-# ── Table 1: Summary stats post-2018 ──
 t1 <- stats_a %>% select(Variable, N, Mean, SD, Skewness, Kurtosis)
 colnames(t1) <- c("Variable", "$N$", "Mean", "SD", "Skew.", "Kurt.")
 t1_xt <- xtable(t1,
@@ -870,7 +755,6 @@ print(t1_xt, file = "table_sumstats_post2018.tex",
       sanitize.colnames.function = identity)
 cat("  Saved: table_sumstats_post2018.tex\n")
 
-# ── Table 2: ADF post-2018 ──
 t2 <- adf_a %>% select(Variable, ADF_stat, p_value, N, Stationary)
 colnames(t2) <- c("Variable", "ADF stat", "$p$-value", "$N$", "Stationary")
 t2_xt <- xtable(t2,
@@ -884,7 +768,6 @@ print(t2_xt, file = "table_adf_post2018.tex",
       sanitize.colnames.function = identity)
 cat("  Saved: table_adf_post2018.tex\n")
 
-# ── Table 3: Granger forward post-2018 ──
 t3 <- gc_fwd_a %>%
   mutate(Direction = paste0(X, " $\\rightarrow$ ", Y)) %>%
   select(Direction, Lag, N, F_stat, p_value, Sig)
@@ -901,7 +784,6 @@ print(t3_xt, file = "table_granger_fwd_post2018.tex",
       scalebox = 0.78)
 cat("  Saved: table_granger_fwd_post2018.tex\n")
 
-# ── Table 4: Granger reverse post-2018 ──
 t4 <- gc_rev_a %>%
   mutate(Direction = paste0(X, " $\\rightarrow$ ", Y)) %>%
   select(Direction, Lag, N, F_stat, p_value, Sig)
@@ -918,7 +800,6 @@ print(t4_xt, file = "table_granger_rev_post2018.tex",
       scalebox = 0.78)
 cat("  Saved: table_granger_rev_post2018.tex\n")
 
-# ── Table 5: Chow + SupF post-2018 ──
 t5_chow <- chow_a %>%
   filter(grepl("SOFR_EFFR|d_Reserves|d_TGA", Direction) &
          grepl("d_Baa|d_Aaa|d_Baa_Aaa", Direction) &
@@ -937,7 +818,6 @@ print(t5_xt, file = "table_chow_post2018.tex",
       scalebox = 0.78)
 cat("  Saved: table_chow_post2018.tex\n")
 
-# ── Table 6: SupF post-2018 ──
 t6 <- supf_a %>% select(Direction, Lag, SupF, p_value, Sig)
 colnames(t6) <- c("Direction", "Lag", "SupF", "$p$-value", "")
 t6_xt <- xtable(t6,
@@ -952,7 +832,6 @@ print(t6_xt, file = "table_supf_post2018.tex",
       scalebox = 0.78)
 cat("  Saved: table_supf_post2018.tex\n")
 
-# ── Table 7: TED Granger comparison (price channel) ──
 t7 <- gc_b %>%
   filter(X == "TED_spread") %>%
   mutate(Direction = paste0("TED $\\rightarrow$ ", Y)) %>%
@@ -971,7 +850,6 @@ print(t7_xt, file = "table_granger_ted_price.tex",
       scalebox = 0.72)
 cat("  Saved: table_granger_ted_price.tex\n")
 
-# ── Table 8: TED Granger comparison (quantity channel) ──
 t8 <- gc_b %>%
   filter(X %in% c("d_Reserves", "d_TGA"),
          Y %in% c("d_Baa", "d_Aaa", "d_Baa_Aaa")) %>%
@@ -991,7 +869,6 @@ print(t8_xt, file = "table_granger_ted_qty.tex",
       scalebox = 0.68)
 cat("  Saved: table_granger_ted_qty.tex\n")
 
-# ── Table 9: TED reverse causality ──
 t9 <- gc_b %>%
   filter(X %in% c("d_Baa", "d_Aaa"),
          Y %in% c("TED_spread", "d_Reserves", "d_TGA")) %>%
@@ -1011,7 +888,6 @@ print(t9_xt, file = "table_granger_ted_reverse.tex",
       scalebox = 0.68)
 cat("  Saved: table_granger_ted_reverse.tex\n")
 
-# ── Table 10: Chow TED at 2015 ──
 t10 <- chow_b %>%
   filter(grepl("TED|d_Reserves|d_TGA", Direction) &
          grepl("d_Baa|d_Aaa|d_Baa_Aaa", Direction) &
@@ -1030,7 +906,6 @@ print(t10_xt, file = "table_chow_ted_2015.tex",
       scalebox = 0.78)
 cat("  Saved: table_chow_ted_2015.tex\n")
 
-# ── Table 11: SupF TED ──
 t11 <- supf_b %>% select(Direction, Lag, SupF, p_value, Sig)
 colnames(t11) <- c("Direction", "Lag", "SupF", "$p$-value", "")
 t11_xt <- xtable(t11,
@@ -1045,7 +920,6 @@ print(t11_xt, file = "table_supf_ted.tex",
       scalebox = 0.78)
 cat("  Saved: table_supf_ted.tex\n")
 
-# ── Table 12: Summary stats TED by regime ──
 t12 <- stats_b %>%
   filter(Variable %in% c("TED_spread", "d_Baa", "d_Aaa", "d_Reserves")) %>%
   select(Period, Variable, N, Mean, SD, Skewness, Kurtosis)
@@ -1062,7 +936,6 @@ print(t12_xt, file = "table_sumstats_ted_break.tex",
       scalebox = 0.78)
 cat("  Saved: table_sumstats_ted_break.tex\n")
 
-# ── Table 13: ADF TED by regime ──
 t13 <- adf_b %>% select(Period, Variable, ADF_stat, p_value, N, Stationary)
 colnames(t13) <- c("Period", "Variable", "ADF stat", "$p$-value", "$N$", "Stationary")
 t13_xt <- xtable(t13,
@@ -1077,10 +950,6 @@ print(t13_xt, file = "table_adf_ted_break.tex",
       scalebox = 0.78)
 cat("  Saved: table_adf_ted_break.tex\n")
 
-
-###############################################################################
-#  SAVE ALL RESULTS
-###############################################################################
 
 write.csv(gc_a, "results_granger_post2018.csv", row.names = FALSE)
 write.csv(gc_b, "results_granger_ted.csv", row.names = FALSE)
@@ -1097,7 +966,6 @@ cat("\n\n================================================================\n")
 cat("  ALL RESULTS SAVED\n")
 cat("================================================================\n\n")
 
-# Final summary
 cat("================================================================\n")
 cat("  FINAL SUMMARY\n")
 cat("================================================================\n\n")
