@@ -1,9 +1,3 @@
-##############################################################################
-##  Step 3 – The Dollar and Credit Markets
-##  DXY → HYG/LQD, HYG/SHV, EMB  +  DXY ↔ Reserves, TGA
-##  Jordi Camps Triay – TFG 2026
-##############################################################################
-
 library(tidyverse)
 library(lmtest)
 library(sandwich)
@@ -11,33 +5,20 @@ library(tseries)
 library(xtable)
 library(vars)
 
-# Fix MASS::select masking dplyr::select
 select <- dplyr::select
 
 WD <- "/Users/jordi/Downloads/University/TFG/Data/Thesis/step3_dollar_analysis"
 setwd(WD)
 
-# ── 1. Load & prepare data ──────────────────────────────────────────────────
 
 raw <- read_csv("../data_master.csv", show_col_types = FALSE)
 raw$Date <- as.Date(raw$Date)
 
-# Common sample: all 4 credit-side variables + DXY available
 df <- raw %>%
   filter(!is.na(DXY), !is.na(HYG), !is.na(LQD), !is.na(SHV), !is.na(EMB)) %>%
   arrange(Date)
 
 cat("Dollar analysis sample:", as.character(range(df$Date)), "  N =", nrow(df), "\n")
-
-# Variables we'll use  (all are daily changes / log returns → stationary)
-#   lr_DXY          : 100 * log(DXY_t / DXY_{t-1})  … already in pct
-#   d_log_HYG_LQD   : Δ log(HYG/LQD)
-#   d_log_HYG_SHV   : Δ log(HYG/SHV)
-#   lr_EMB          : 100 * log(EMB_t / EMB_{t-1})
-#   d_Reserves      : daily change in reserves (bn USD)
-#   d_TGA           : daily change in TGA (bn USD)
-
-# ── 2. ADF tests ────────────────────────────────────────────────────────────
 
 adf_vars <- c("lr_DXY", "d_log_HYG_LQD", "d_log_HYG_SHV", "lr_EMB",
               "d_Reserves", "d_TGA")
@@ -64,8 +45,6 @@ print(adf_xt, file = "table_adf_dollar.tex",
       include.rownames = FALSE, sanitize.text.function = identity,
       booktabs = TRUE, floating = TRUE, table.placement = "H",
       comment = FALSE)
-
-# ── 3. Summary statistics ──────────────────────────────────────────────────
 
 sum_vars <- c("lr_DXY", "d_log_HYG_LQD", "d_log_HYG_SHV", "lr_EMB")
 sum_labels <- c("$\\Delta\\log$ DXY (\\%)", "$\\Delta\\log$(HYG/LQD)",
@@ -94,8 +73,6 @@ print(ss_xt, file = "table_sumstats_dollar.tex",
       booktabs = TRUE, floating = TRUE, table.placement = "H",
       comment = FALSE)
 
-# ── 4. Contemporaneous correlation matrix ───────────────────────────────────
-
 cor_vars   <- c("lr_DXY", "d_log_HYG_LQD", "d_log_HYG_SHV", "lr_EMB")
 cor_labels <- c("DXY", "HYG/LQD", "HYG/SHV", "EMB")
 
@@ -112,21 +89,16 @@ print(cor_xt, file = "table_corr_dollar.tex",
       booktabs = TRUE, floating = TRUE, table.placement = "H",
       comment = FALSE)
 
-# ── 5. Granger causality tests ──────────────────────────────────────────────
-
 run_granger <- function(data, x_var, y_var, lag_order) {
   d2 <- data[, c(x_var, y_var)] %>% drop_na()
   n  <- nrow(d2)
-  # Unrestricted model: y ~ lags(y) + lags(x)
   fmla_u <- paste0(y_var, " ~ ",
                    paste0("lag(", y_var, ", ", 1:lag_order, ")", collapse = " + "),
                    " + ",
                    paste0("lag(", x_var, ", ", 1:lag_order, ")", collapse = " + "))
-  # Restricted model: y ~ lags(y) only
   fmla_r <- paste0(y_var, " ~ ",
                    paste0("lag(", y_var, ", ", 1:lag_order, ")", collapse = " + "))
 
-  # Build lagged data manually for proper alignment
   maxlag <- lag_order
   Y  <- d2[(maxlag + 1):n, y_var, drop = TRUE]
   Xl <- matrix(NA, nrow = n - maxlag, ncol = lag_order)
@@ -147,12 +119,10 @@ run_granger <- function(data, x_var, y_var, lag_order) {
   f_cl <- wt$F[2]
   p_cl <- wt$`Pr(>F)`[2]
 
-  # HAC-robust F-test (Newey-West)
   wt_hac <- waldtest(mod_r, mod_u, vcov = vcovHAC)
   f_hac <- wt_hac$F[2]
   p_hac <- wt_hac$`Pr(>F)`[2]
 
-  # Direction sign: coefficient of first lag of X in unrestricted model
   beta1 <- coef(mod_u)[paste0("x_lag1")]
 
   nobs <- nrow(dat_reg)
@@ -171,7 +141,6 @@ sig_stars <- function(p) {
             TRUE      ~ "")
 }
 
-# --- Battery 1: DXY → Credit/Risk measures ---
 cat("\n=== Battery 1: DXY → Credit measures ===\n")
 
 b1_pairs <- list(
@@ -188,7 +157,6 @@ b1 <- map_dfr(b1_pairs, function(pair) {
 
 print(b1 %>% select(X, Y, Lag, N, F_classical, p_classical, F_HAC, p_HAC))
 
-# --- Battery 2: Reverse – Credit → DXY ---
 cat("\n=== Battery 2: Credit → DXY (reverse) ===\n")
 
 b2_pairs <- list(
@@ -205,14 +173,11 @@ b2 <- map_dfr(b2_pairs, function(pair) {
 
 print(b2 %>% select(X, Y, Lag, N, F_classical, p_classical, F_HAC, p_HAC))
 
-# --- Battery 3: DXY ↔ Reserves, TGA ---
 cat("\n=== Battery 3: DXY ↔ Quantities ===\n")
 
 b3_pairs <- list(
-  # Forward: quantities → DXY
   c("d_Reserves", "lr_DXY"),
   c("d_TGA", "lr_DXY"),
-  # Reverse: DXY → quantities
   c("lr_DXY", "d_Reserves"),
   c("lr_DXY", "d_TGA")
 )
@@ -225,7 +190,6 @@ b3 <- map_dfr(b3_pairs, function(pair) {
 
 print(b3 %>% select(X, Y, Lag, N, F_classical, p_classical, F_HAC, p_HAC))
 
-# Combine all results & save
 all_gc <- bind_rows(
   b1 %>% mutate(Battery = "1_DXY_to_Credit"),
   b2 %>% mutate(Battery = "2_Credit_to_DXY"),
@@ -233,8 +197,6 @@ all_gc <- bind_rows(
 )
 
 write_csv(all_gc, "results_granger_dollar.csv")
-
-# ── 6. LaTeX tables for Granger results ─────────────────────────────────────
 
 clean_name <- function(x) {
   x <- gsub("d_log_HYG_LQD", "$\\Delta\\log$(HYG/LQD)", x, fixed = TRUE)
@@ -278,8 +240,6 @@ make_gc_table(b3,
               "Granger Causality: DXY $\\leftrightarrow$ Reserves, TGA (2008--2026)",
               "tab:gc_dxy_qty", "table_granger_dxy_qty.tex")
 
-# ── 7. Rolling correlations (250-day window) ────────────────────────────────
-
 roll_cor <- function(x, y, w = 250) {
   n <- length(x)
   rc <- rep(NA_real_, n)
@@ -298,7 +258,6 @@ df_rc <- df %>%
     rc_EMB     = roll_cor(lr_DXY, lr_EMB, 250)
   )
 
-# Plot rolling correlations
 pdf("fig_rolling_corr_dxy.pdf", width = 9, height = 5)
 par(mar = c(4, 4, 2.5, 1), mgp = c(2.5, 0.8, 0))
 plot(df_rc$Date, df_rc$rc_HYG_LQD, type = "n",
@@ -308,10 +267,8 @@ abline(h = 0, col = "grey60", lty = 2)
 lines(df_rc$Date, df_rc$rc_HYG_LQD, col = "#2166AC", lwd = 1.5)
 lines(df_rc$Date, df_rc$rc_HYG_SHV, col = "#D6604D", lwd = 1.5)
 lines(df_rc$Date, df_rc$rc_EMB,     col = "#1B7837", lwd = 1.5)
-# COVID line
 abline(v = as.Date("2020-03-01"), col = "red", lty = 3)
 text(as.Date("2020-03-01"), 0.25, "COVID", col = "red", cex = 0.8, pos = 4)
-# GFC line
 abline(v = as.Date("2008-09-15"), col = "darkred", lty = 3)
 text(as.Date("2008-09-15"), 0.25, "Lehman", col = "darkred", cex = 0.8, pos = 4)
 legend("bottomleft",
@@ -320,7 +277,6 @@ legend("bottomleft",
        bg = "white")
 dev.off()
 
-# ── 8. Rolling Granger p-values (400-day window, lag 5) ─────────────────────
 
 roll_granger <- function(data, x_var, y_var, lag_order = 5, window = 400) {
   d2 <- data[, c("Date", x_var, y_var)] %>% drop_na()
@@ -333,7 +289,7 @@ roll_granger <- function(data, x_var, y_var, lag_order = 5, window = 400) {
     sub <- d2[idx, ]
     tryCatch({
       res <- run_granger(sub, x_var, y_var, lag_order)
-      pvals[i] <- res$p_HAC  # Use HAC-robust p-values
+      pvals[i] <- res$p_HAC 
     }, error = function(e) {})
   }
   tibble(Date = dates, p_value = pvals)
@@ -351,7 +307,6 @@ rg_emb <- roll_granger(df, "lr_DXY", "lr_EMB") %>%
 rg_all <- bind_rows(rg_hyglqd, rg_hygshv, rg_emb)
 write_csv(rg_all, "results_rolling_granger_dollar.csv")
 
-# Plot rolling Granger
 pdf("fig_rolling_granger_dxy.pdf", width = 9, height = 5)
 par(mar = c(4, 4, 2.5, 1), mgp = c(2.5, 0.8, 0))
 plot(rg_hyglqd$Date, rg_hyglqd$p_value, type = "n",
@@ -361,7 +316,6 @@ abline(h = 0.05, col = "black", lty = 2)
 lines(rg_hyglqd$Date, rg_hyglqd$p_value, col = "#2166AC", lwd = 1.3)
 lines(rg_hygshv$Date, rg_hygshv$p_value, col = "#D6604D", lwd = 1.3)
 lines(rg_emb$Date,    rg_emb$p_value,    col = "#1B7837", lwd = 1.3)
-# Event lines
 abline(v = as.Date("2020-03-01"), col = "red", lty = 3)
 text(as.Date("2020-03-01"), 0.95, "COVID", col = "red", cex = 0.8, pos = 4)
 abline(v = as.Date("2008-09-15"), col = "darkred", lty = 3)
@@ -373,7 +327,6 @@ legend("topright",
        lty = c(1, 1, 1, 2), lwd = c(2, 2, 2, 1), cex = 0.8, bg = "white")
 dev.off()
 
-# ── 9. Scatter plots: DXY vs each credit measure ───────────────────────────
 
 pdf("fig_scatter_dxy.pdf", width = 10, height = 3.5)
 par(mfrow = c(1, 3), mar = c(4, 4, 2, 1), mgp = c(2.5, 0.8, 0))
@@ -408,9 +361,6 @@ scatter_pair(df$lr_DXY, df$lr_EMB,
 
 dev.off()
 
-# ── 10. Time series of levels (for descriptive figure) ──────────────────────
-
-# Normalise HYG/LQD and HYG/SHV to 100 at start
 t0_hyglqd <- df$HYG[1] / df$LQD[1]
 t0_hygshv <- df$HYG_SHV[1]
 t0_emb    <- df$EMB[1]
@@ -418,34 +368,28 @@ t0_emb    <- df$EMB[1]
 pdf("fig_ts_dollar_credit.pdf", width = 10, height = 7)
 par(mfrow = c(2, 2), mar = c(4, 4, 2.5, 1), mgp = c(2.5, 0.8, 0))
 
-# Panel A: DXY
 plot(df$Date, df$DXY, type = "l", col = "#2166AC", lwd = 1.2,
      xlab = "", ylab = "Index level", main = "(a) US Dollar Index (DXY)")
 abline(v = as.Date("2008-09-15"), col = "darkred", lty = 3)
 abline(v = as.Date("2020-03-01"), col = "red", lty = 3)
 
-# Panel B: HYG/LQD
 hyg_lqd <- df$HYG / df$LQD
 plot(df$Date, hyg_lqd, type = "l", col = "#D6604D", lwd = 1.2,
      xlab = "", ylab = "Ratio", main = "(b) HYG/LQD (Risk Aversion)")
 abline(v = as.Date("2008-09-15"), col = "darkred", lty = 3)
 abline(v = as.Date("2020-03-01"), col = "red", lty = 3)
 
-# Panel C: HYG/SHV
 plot(df$Date, df$HYG_SHV, type = "l", col = "#B2182B", lwd = 1.2,
      xlab = "", ylab = "Ratio", main = "(c) HYG/SHV (Flight to Quality)")
 abline(v = as.Date("2008-09-15"), col = "darkred", lty = 3)
 abline(v = as.Date("2020-03-01"), col = "red", lty = 3)
 
-# Panel D: EMB
 plot(df$Date, df$EMB, type = "l", col = "#1B7837", lwd = 1.2,
      xlab = "", ylab = "USD", main = "(d) EMB (EM Bond ETF)")
 abline(v = as.Date("2008-09-15"), col = "darkred", lty = 3)
 abline(v = as.Date("2020-03-01"), col = "red", lty = 3)
 
 dev.off()
-
-# ── 11. Summary table ───────────────────────────────────────────────────────
 
 summ <- all_gc %>%
   group_by(Battery) %>%
@@ -475,14 +419,12 @@ print(ss_xt, file = "table_summary_dollar.tex",
       booktabs = TRUE, floating = TRUE, table.placement = "H",
       comment = FALSE)
 
-# ── 12. COVID sensitivity (excl. Feb--May 2020) ────────────────────────────
 
 df_nocovid <- df %>%
   filter(Date < as.Date("2020-02-01") | Date > as.Date("2020-05-31"))
 
 cat("\nCOVID sensitivity sample: N =", nrow(df_nocovid), "\n")
 
-# Re-run key Battery 1 tests without COVID
 covid_pairs <- list(
   c("lr_DXY", "d_log_HYG_LQD"),
   c("lr_DXY", "d_log_HYG_SHV"),
@@ -504,7 +446,6 @@ covid_excl <- map_dfr(covid_pairs, function(pair) {
 covid_comp <- bind_rows(covid_full, covid_excl)
 write_csv(covid_comp, "results_covid_dollar.csv")
 
-# Make table
 covid_tab <- covid_comp %>%
   mutate(Direction = paste0(clean_name(X), " $\\rightarrow$ ", clean_name(Y)),
          Sig_hac = sig_stars(p_HAC)) %>%
